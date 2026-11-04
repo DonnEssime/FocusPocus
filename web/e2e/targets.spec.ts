@@ -30,7 +30,7 @@ test('targets are hidden until switched on; switching off hides but keeps them',
   await expect(page.getByTestId('tt-day-balance')).toHaveCount(7);
   await expect(page.getByTestId('tt-target-stats')).toBeVisible();
   await setTarget(page, weekBalance(page, '2026-11-03'), '100%');
-  await expect(weekBalance(page, '2026-11-03')).toHaveText('−8:00');
+  await expect(weekBalance(page, '2026-11-03')).toHaveText('0:00 / 8:00 → −8:00');
 
   await page.getByTestId('module-settings').click();
   await page.getByTestId('tt-targets-enabled').uncheck();
@@ -38,7 +38,7 @@ test('targets are hidden until switched on; switching off hides but keeps them',
   await expect(page.getByTestId('tt-day-balance')).toHaveCount(0);
   await expect(page.getByTestId('tt-target-stats')).toHaveCount(0);
   await enableTargets(page);
-  await expect(weekBalance(page, '2026-11-03')).toHaveText('−8:00');
+  await expect(weekBalance(page, '2026-11-03')).toHaveText('0:00 / 8:00 → −8:00');
 });
 
 test('the Day view chip sets targets by shortcut or typed hh:mm / %, and refuses nonsense', async ({ page }) => {
@@ -47,7 +47,7 @@ test('the Day view chip sets targets by shortcut or typed hh:mm / %, and refuses
   await enableTargets(page);
   await page.getByTestId('tt-view-day').click();
   const chip = page.getByTestId('tt-target-chip');
-  await expect(chip).toHaveText('2:00 / 0:00 → +2:00');
+  await expect(chip).toHaveText('+2:00');
 
   await chip.click();
   await page.getByTestId('tt-target-100').click();
@@ -70,7 +70,7 @@ test('the Day view chip sets targets by shortcut or typed hh:mm / %, and refuses
 
   await chip.click();
   await page.getByTestId('tt-target-0').click();
-  await expect(chip).toHaveText('2:00 / 0:00 → +2:00');
+  await expect(chip).toHaveText('+2:00');
   await page.getByTestId('undo').click();
   await expect(chip).toHaveText('2:00 / 5:00 → −3:00');
 
@@ -106,9 +106,9 @@ test('changing full-time hours asks: going forward keeps the past, retroactively
   await page.getByTestId('tt-apply-forward').click();
   await expect(page.getByTestId('tt-fulltime-since')).toContainText('Nov 4, 2026');
   await page.getByTestId('settings-close').click();
-  await expect(weekBalance(page, '2026-11-02')).toHaveText('−8:00');
-  await expect(weekBalance(page, '2026-11-03')).toHaveText('−3:00');
-  await expect(weekBalance(page, '2026-11-04')).toHaveText('−6:00');
+  await expect(weekBalance(page, '2026-11-02')).toHaveText('0:00 / 8:00 → −8:00');
+  await expect(weekBalance(page, '2026-11-03')).toHaveText('0:00 / 3:00 → −3:00');
+  await expect(weekBalance(page, '2026-11-04')).toHaveText('0:00 / 6:00 → −6:00');
 
   await settings();
   await fulltime.fill('7:00');
@@ -116,11 +116,11 @@ test('changing full-time hours asks: going forward keeps the past, retroactively
   await page.getByTestId('tt-apply-all').click();
   await expect(page.getByTestId('tt-fulltime-since')).toHaveCount(0);
   await page.getByTestId('settings-close').click();
-  await expect(weekBalance(page, '2026-11-02')).toHaveText('−7:00');
-  await expect(weekBalance(page, '2026-11-03')).toHaveText('−3:00'); // hh:mm: never changes
-  await expect(weekBalance(page, '2026-11-04')).toHaveText('−7:00');
+  await expect(weekBalance(page, '2026-11-02')).toHaveText('0:00 / 7:00 → −7:00');
+  await expect(weekBalance(page, '2026-11-03')).toHaveText('0:00 / 3:00 → −3:00'); // hh:mm: never changes
+  await expect(weekBalance(page, '2026-11-04')).toHaveText('0:00 / 7:00 → −7:00');
   await page.getByTestId('undo').click();
-  await expect(weekBalance(page, '2026-11-02')).toHaveText('−8:00');
+  await expect(weekBalance(page, '2026-11-02')).toHaveText('0:00 / 8:00 → −8:00');
 });
 
 test('statistics: balance of the shown range (up to today) and over the chosen interval', async ({ page }) => {
@@ -175,4 +175,18 @@ test('the month view shows worked / target → balance per day, coloured', async
   await expect(cell('2026-11-06').getByTestId('tt-target-figure')).toHaveText('0:00 / 4:00');
   await expect(cell('2026-11-05').getByTestId('tt-target-figure')).toHaveText('');
   await expect(page.getByTestId('tt-month-total')).toHaveCount(0); // replaced by the figure
+});
+
+test('week headers use the same figure: target 0 shows only the balance, future days the target', async ({ page }) => {
+  await openTracker(page, 'targets-week');
+  await dispatch(page, 'tt.SetTargetSettings', { enabled: true });
+  await dispatch(page, 'tt.SetDayTarget', { day: '2026-11-02', target: { percent: 100 } });
+  await dispatch(page, 'tt.SetDayTarget', { day: '2026-11-05', target: { percent: 50 } });
+  await createBlock(page, D4 - 48 * H + H, D4 - 48 * H + 10 * H); // Monday: 9 h of 8
+  await createBlock(page, D4 - 24 * H + H, D4 - 24 * H + 3 * H); // Tuesday: 2 h, no target
+  await expect(weekBalance(page, '2026-11-02')).toHaveText('9:00 / 8:00 → +1:00');
+  await expect(weekBalance(page, '2026-11-02').getByTestId('tt-target-balance')).toHaveClass(/over/);
+  await expect(weekBalance(page, '2026-11-03')).toHaveText('+2:00');
+  await expect(weekBalance(page, '2026-11-04')).toHaveText('–');
+  await expect(weekBalance(page, '2026-11-05')).toHaveText('0:00 / 4:00');
 });

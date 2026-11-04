@@ -1014,14 +1014,6 @@ button.danger-button {
   font-variant-numeric: tabular-nums;
 }
 
-.tl-daytarget.over {
-  color: var(--success);
-}
-
-.tl-daytarget.under {
-  color: var(--warning);
-}
-
 .tl-daytarget {
   border: none;
   background: none;

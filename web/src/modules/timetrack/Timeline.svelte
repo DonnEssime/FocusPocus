@@ -6,7 +6,7 @@
   import { getShell } from '../../shell/context';
   import { msgText } from '../../i18n/msg';
   import { blockBackground, blockInk } from './colors';
-  import { formatBalance, formatClock } from '@focuspocus/modules/timetrack/targets';
+  import TargetFigure from './TargetFigure.svelte';
   import { dayTargetView } from './targetView';
   import { displayTitle } from './blockTitle';
   import { formatDay, formatHour, formatTime } from './format';
@@ -24,7 +24,7 @@
   }: {
     ui: TimetrackUi;
     tt: TimetrackState;
-    /** When given (targets on, Week view), each day header shows its balance and opens the target popover. */
+    /** When given (targets on, Week view), each day header shows its target figure and opens the target popover. */
     ontarget?: (day: DayKey, anchor: HTMLElement) => void;
   } = $props();
   const shell = getShell();
@@ -255,14 +255,12 @@
           <button
             type="button"
             class="tl-daytarget"
-            class:over={v.counts && v.balanceMs > 0}
-            class:under={v.counts && v.balanceMs < 0}
             data-testid="tt-day-balance"
             data-day={col.day}
             title={msgText('timetrack.targets.setTarget')}
             onclick={(e) => ontarget(col.day, e.currentTarget)}
           >
-            {#if v.future}{v.targetMs ? formatClock(v.targetMs) : '–'}{:else if v.counts}{formatBalance(v.balanceMs)}{:else}–{/if}
+            <TargetFigure view={v} />
           </button>
         {/if}
       </div>
