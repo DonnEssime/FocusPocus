@@ -10,7 +10,14 @@ import type { AppMessageKey } from '@focuspocus/registry';
 export type LayoutNode =
   | { kind: 'panel'; panel: string }
   | { kind: 'tabs'; tabs: Array<{ title?: AppMessageKey; node: LayoutNode }> }
-  | { kind: 'split'; direction: 'row' | 'column'; children: Array<{ node: LayoutNode; weight?: number }> };
+  | { kind: 'split'; direction: 'row' | 'column'; children: SplitChild[] };
+
+/** `weight` shares the free space; `fit` sizes the child to its content instead (small panels). */
+export interface SplitChild {
+  node: LayoutNode;
+  weight?: number;
+  fit?: boolean;
+}
 
 export const panel = (id: string): LayoutNode => ({ kind: 'panel', panel: id });
 
@@ -25,12 +32,20 @@ export const DEFAULT_LAYOUT: LayoutNode = {
         direction: 'row',
         children: [
           { node: panel('timetrack.timeView'), weight: 3 },
-          { node: { kind: 'split', direction: 'column', children: [{ node: panel('timetrack.settings') }] }, weight: 1 },
+          {
+            node: {
+              kind: 'split',
+              direction: 'column',
+              children: [{ node: panel('timetrack.history'), fit: true }, { node: panel('timetrack.settings') }],
+            },
+            weight: 1,
+          },
         ],
       },
     },
     {
-      // Timer large on the left, settings beside it.
+      // Timer large on the left, settings beside it. No history panel: undo/redo stays
+      // available through keyboard shortcuts only.
       title: 'focus.title',
       node: {
         kind: 'split',

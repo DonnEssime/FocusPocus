@@ -7,7 +7,7 @@
   import { setLocale } from '../i18n/locale.svelte';
   import Msg from '../i18n/Msg.svelte';
   import { msgText } from '../i18n/msg';
-  import { MODULE_TITLES, PANELS } from '../modules';
+  import { PANELS } from '../modules';
   import { applyTheme } from '../theme/applyTheme';
   import { resolveTheme } from '../theme/registry';
   import { setSessionStore, setShell } from './context';
@@ -46,25 +46,22 @@
     return result;
   }
 
-  setShell({ setActiveModule: (id) => (activeModule = id), run });
+  function undo(moduleId: string): void {
+    const r = opened.vs.session.undo(moduleId);
+    if (!r.ok) toast(r.reason, r.params);
+  }
+
+  function redo(moduleId: string): void {
+    const r = opened.vs.session.redo(moduleId);
+    if (!r.ok) toast(r.reason, r.params);
+  }
+
+  setShell({ setActiveModule: (id) => (activeModule = id), run, undo, redo });
 
   const appState = $derived(store.moduleState<AppState>('app'));
   $effect(() => applyTheme(resolveTheme(appState.themeId)));
   $effect(() => setLocale(resolveLocale(appState.locale)));
 
-  const canUndo = $derived(store.canUndo(activeModule));
-  const canRedo = $derived(store.canRedo(activeModule));
-  const scopeTitle = $derived(MODULE_TITLES[activeModule]);
-
-  function undo(): void {
-    const r = opened.vs.session.undo(activeModule);
-    if (!r.ok) toast(r.reason, r.params);
-  }
-
-  function redo(): void {
-    const r = opened.vs.session.redo(activeModule);
-    if (!r.ok) toast(r.reason, r.params);
-  }
 
   function onKeydown(e: KeyboardEvent): void {
     if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
@@ -73,10 +70,10 @@
     const key = e.key.toLowerCase();
     if (key === 'z' && !e.shiftKey) {
       e.preventDefault();
-      if (canUndo) undo();
+      if (store.canUndo(activeModule)) undo(activeModule);
     } else if ((key === 'z' && e.shiftKey) || key === 'y') {
       e.preventDefault();
-      if (canRedo) redo();
+      if (store.canRedo(activeModule)) redo(activeModule);
     }
   }
 
@@ -105,12 +102,6 @@
 <div class="app">
   <header class="app-header">
     <span class="brand"><Msg key="shell.appName" /></span>
-    <span class="spacer"></span>
-    {#if scopeTitle}
-      <span class="muted small" data-testid="undo-scope">{msgText('shell.undoScope', { module: msgText(scopeTitle) })}</span>
-    {/if}
-    <button type="button" data-testid="undo" disabled={!canUndo} onclick={undo}><Msg key="shell.undo" /></button>
-    <button type="button" data-testid="redo" disabled={!canRedo} onclick={redo}><Msg key="shell.redo" /></button>
   </header>
   <main class="app-main">
     <LayoutHost node={DEFAULT_LAYOUT} />

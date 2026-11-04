@@ -228,6 +228,19 @@ button.link {
   flex: 1;
 }
 
+.split-cell.fit {
+  flex: 0 0 auto;
+}
+
+.history {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.history button {
+  flex: 1;
+}
+
 .panel {
   flex: 1;
   min-width: 0;

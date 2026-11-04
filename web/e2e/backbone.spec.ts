@@ -5,6 +5,13 @@ function vaultUrl(name: string): string {
   return `./?opfs=${name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** Focus has no history panel: undo/redo there is keyboard-only. Click a panel title first so
+ * no input has focus (inputs keep their native text undo). */
+async function shortcut(page: Page, panelTitle: string, keys: string): Promise<void> {
+  await page.locator('.panel-title', { hasText: panelTitle }).click();
+  await page.keyboard.press(keys);
+}
+
 async function waitSaved(page: Page): Promise<void> {
   await expect(page.getByTestId('save-status')).toHaveText('All changes saved', { timeout: 15_000 });
 }
@@ -17,7 +24,9 @@ test('shows both modules as tabs with their placeholder panels', async ({ page }
 
   await page.getByRole('tab', { name: 'Focus' }).click();
   await expect(page.getByTestId('focus-countdown')).toHaveText('25:00');
-  await expect(page.getByTestId('undo-scope')).toHaveText('Undo and redo apply to: Focus');
+  // Only time tracking shows undo/redo buttons; Focus has none.
+  await expect(page.locator('[data-panel="timetrack.history"]')).toBeHidden();
+  await expect(page.locator('[data-panel$=".history"]')).toHaveCount(1);
 });
 
 test('commands persist across reloads and undo/redo is per module', async ({ page }) => {
@@ -31,12 +40,17 @@ test('commands persist across reloads and undo/redo is per module', async ({ pag
   await page.getByTestId('focus-duration').press('Enter');
   await expect(page.getByTestId('focus-countdown')).toHaveText('50:00');
 
-  // Undo in the Focus scope leaves time tracking alone.
-  await page.getByTestId('undo').click();
+  // Undo in the Focus scope (keyboard) leaves time tracking alone.
+  await shortcut(page, 'Timer', 'ControlOrMeta+z');
   await expect(page.getByTestId('focus-countdown')).toHaveText('25:00');
+  await shortcut(page, 'Timer', 'ControlOrMeta+Shift+z');
+  await expect(page.getByTestId('focus-countdown')).toHaveText('50:00');
+  await page.getByRole('tab', { name: 'Time tracking' }).click();
+  await expect(page.getByTestId('day-window-summary')).toContainText('from 08:00');
+  await page.getByTestId('undo').click();
+  await expect(page.getByTestId('day-window-summary')).toContainText('from 07:00');
   await expect(page.getByTestId('undo')).toBeDisabled();
   await page.getByTestId('redo').click();
-  await expect(page.getByTestId('focus-countdown')).toHaveText('50:00');
 
   await waitSaved(page);
   await page.reload();
@@ -44,7 +58,7 @@ test('commands persist across reloads and undo/redo is per module', async ({ pag
   await page.getByRole('tab', { name: 'Focus' }).click();
   await expect(page.getByTestId('focus-countdown')).toHaveText('50:00');
   // Undo history survives the reload, because it is part of the log.
-  await page.getByTestId('undo').click();
+  await shortcut(page, 'Timer', 'ControlOrMeta+z');
   await expect(page.getByTestId('focus-countdown')).toHaveText('25:00');
 });
 

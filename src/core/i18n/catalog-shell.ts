@@ -22,7 +22,7 @@ export const shellCatalog = {
   'shell.picker.loading': { en: 'Opening vault…' },
   'shell.undo': { en: 'Undo' },
   'shell.redo': { en: 'Redo' },
-  'shell.undoScope': { en: 'Undo and redo apply to: {module}' },
+  'shell.panel.history': { en: 'History' },
   'shell.unknownPanel': { en: 'Unknown panel “{id}”.' },
   'shell.status.saved': { en: 'All changes saved' },
   'shell.status.pending': { en: 'Saving…' },

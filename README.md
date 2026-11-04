@@ -119,6 +119,7 @@ We keep the reference's design and make it fully append-only:
 - **Dependency-aware.** You can't undo a command while active later commands depend on it, unless the undo cascades and the UI shows the user which commands will go with it.
 - **Redo is also a command:** `core.Undo` aimed at an earlier `core.Undo`. The reference did redo by *popping* the trailing Undo line, which rewrites the log. That breaks append-only storage and sync, so we never delete log lines.
 - **Undo scope.** Each module has its own undo stack, and the `app` module has one too. Undo in the time-tracker tab never reverts a focus-timer action. The log is shared, so scoping is done by the command's namespace.
+- **Undo UI.** There are no global undo/redo buttons. A module that wants visible buttons adds the shared **History panel** (`HistoryPanel.svelte`, one instance per module, bound to that module's stack) to its page. Keyboard shortcuts work everywhere: Cmd/Ctrl+Z and Shift+Cmd/Ctrl+Z (or Ctrl+Y) act on the module whose panel was last clicked or focused. When the focus is in a text field, those keys keep their native text undo.
 - **Coalescing.** Some UI actions issue many commands (a drag that edits several entries). Wrap them in a single `core.Batch { cmds }` or link them with a shared `group` id, so one undo reverts the whole action.
 - Commands that should never be undone (for example, purely informational ones) declare this in their definition.
 
@@ -231,7 +232,7 @@ interface ModuleDefinition<S> {
 
 - The **core** knows nothing about the modules. It sends each command to its module by namespace prefix. Each module's state is a separate slice: modules never read another module's slice, and a module's commands never depend on another module's commands.
 - On the UI side, each module provides **panels** (`{ id, module, titleKey, component }`). The shell renders a **layout tree** from the vault (`app.SetLayout`), for example `tabs[timetrack, focus]` today and maybe `split(h, [timetrack, focus])` later. Panels must not assume they fill the whole screen or are the only thing visible.
-- **Layout convention:** tabs switch between **modules** only. Within a module, all its panels are composed onto **one page** in a fixed layout that the module's spec defines, using `split` nodes and no sub-tabs. Each panel shows its title in a small header. On narrow windows, side-by-side panels stack vertically.
+- **Layout convention:** tabs switch between **modules** only. Within a module, all its panels are composed onto **one page** in a fixed layout that the module's spec defines, using `split` nodes and no sub-tabs. Each panel shows its title in a small header. A split child can be `fit` (sized to its content, for small panels like History) or share the free space by `weight`. On narrow windows, side-by-side panels stack vertically.
 - A shared need between modules (such as "a timer is running" for the title bar) goes through a core-level read-only selector interface. Modules never import each other.
 
 ---
@@ -338,7 +339,7 @@ There is only one session at a time. While it runs, the button reads Stop.
 
 #### Panels
 
-The module provides two panels (§6), shown together on the Focus page: `split(h, [focus.timer ×2, focus.settings ×1])`. The timer takes two-thirds of the width and the settings sit beside it.
+The module provides two panels (§6), shown together on the Focus page: `split(h, [focus.timer ×2, focus.settings ×1])`. The timer takes two-thirds of the width and the settings sit beside it. There is **no History panel**, because the timer doesn't need visible undo/redo. Settings changes can still be undone with the keyboard shortcuts (§3.3).
 
 - **`focus.timer`:** a large `mm:ss` countdown and a single Start/Stop button.
 - **`focus.settings`:**
@@ -422,9 +423,10 @@ A calendar of tracked **blocks**: time intervals with an optional title and any 
 | `timetrack.timeView` | Day/Week/Month toggle, ‹ › arrows, a clickable date label (opens a date picker popover for jumping to faraway dates), a **Today** button, the **Start/Stop tracking** button, and the calendar itself. |
 | `timetrack.stats` | Statistics for the exact range currently shown (that day, week or month). |
 | `timetrack.tags` | Tag management. |
+| `timetrack.history` | Undo/Redo buttons for the time tracker (shared History panel, §3.3). |
 | `timetrack.settings` | Day window start and end hours. |
 
-All four panels sit together on the Time tracking page: `split(h, [timetrack.timeView ×3, split(v, [timetrack.stats, timetrack.tags, timetrack.settings]) ×1])`. The time view takes three-quarters of the width, and a side column stacks statistics, tags and settings. Panels talk to each other only through module state. The selected view and date range are **UI state** in a store shared by the module's panels. They are not commands, because navigating is not an undoable change.
+All panels sit together on the Time tracking page: `split(h, [timetrack.timeView ×3, split(v, [timetrack.history (fit), timetrack.stats, timetrack.tags, timetrack.settings]) ×1])`. The time view takes three-quarters of the width. A side column stacks a small History panel (undo/redo), then statistics, tags and settings. Panels talk to each other only through module state. The selected view and date range are **UI state** in a store shared by the module's panels. They are not commands, because navigating is not an undoable change.
 
 #### Views
 
@@ -528,7 +530,7 @@ All of these are undoable through the Time tracking undo stack. Commands that ta
 - [ ] Vault: on-disk snapshots (`ModuleDefinition.snapshot`), load-time benchmark (§8), first frozen fixture vault
 - [ ] Vault: surface rejected-on-merge commands to the user for review (today only a count in the status bar)
 - [x] Vault picker: IndexedDB handle, permission re-request, create/open vault
-- [x] Shell: layout tree host (nested tabs and splits), undo/redo bar plus keyboard shortcuts, toasts, status bar
+- [x] Shell: layout tree host (nested tabs and splits), per-module History panel (undo/redo) plus keyboard shortcuts, toasts, status bar
 - [x] Theme registry with **Dark** (default) only; no-hard-coded-colour test
 - [x] i18n registry with **English** only; coverage spec
 - [x] Placeholder panels for the time tracker, wired to its spec'd `tt.SetDayWindow` settings command

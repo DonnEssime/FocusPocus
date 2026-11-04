@@ -33,7 +33,7 @@
       onfocusincapture={() => shell.setActiveModule(def.module)}
     >
       <h2 class="panel-title"><Msg key={def.titleKey} /></h2>
-      <div class="panel-body"><def.component /></div>
+      <div class="panel-body"><def.component {...def.props} /></div>
     </section>
   {:else}
     <section class="panel"><Msg key="shell.unknownPanel" params={{ id: node.panel }} /></section>
@@ -63,7 +63,7 @@
 {:else}
   <div class="split" style:flex-direction={node.direction}>
     {#each node.children as child, i (i)}
-      <div class="split-cell" style:flex-grow={child.weight ?? 1}>
+      <div class="split-cell" class:fit={child.fit} style:flex-grow={child.fit ? 0 : (child.weight ?? 1)}>
         <LayoutHost node={child.node} />
       </div>
     {/each}

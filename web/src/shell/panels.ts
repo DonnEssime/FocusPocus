@@ -7,5 +7,8 @@ export interface PanelDefinition {
   /** Owning module id: the undo/redo scope while the user works in this panel. */
   module: string;
   titleKey: AppMessageKey;
-  component: Component;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  component: Component<any>;
+  /** Props passed to the component (lets one component serve several modules). */
+  props?: Record<string, unknown>;
 }

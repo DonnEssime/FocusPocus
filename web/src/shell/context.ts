@@ -8,6 +8,9 @@ export interface ShellApi {
   setActiveModule(moduleId: string): void;
   /** Dispatch an action; failures are shown as a toast. */
   run(action: Action): CommandResult;
+  /** Undo / redo the latest step of one module; failures are shown as a toast. */
+  undo(moduleId: string): void;
+  redo(moduleId: string): void;
 }
 
 const SESSION = Symbol('session');

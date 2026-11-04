@@ -39,8 +39,6 @@ test('start counts down with sound, stop resets silently', async ({ page }) => {
   await expect(timer).toHaveAttribute('data-audio', 'playing');
   await page.clock.fastForward('01:01');
   await expect(countdown).toHaveText('23:59');
-  // Start/Stop are not undoable.
-  await expect(page.getByTestId('undo')).toBeDisabled();
 
   await toggle.click();
   await expect(toggle).toHaveText('Start');
@@ -77,7 +75,8 @@ test('settings: choosing sounds is saved and undoable, settings changes do not a
   await page.getByTestId('focus-ticking').selectOption('rainforest-rain');
   await page.getByTestId('focus-finishing').selectOption('chime-soft');
   await expect(page.locator('.toast')).toHaveCount(0);
-  await page.getByTestId('undo').click();
+  await page.locator('.panel-title', { hasText: 'Settings' }).last().click();
+  await page.keyboard.press('ControlOrMeta+z');
   await expect(page.getByTestId('focus-finishing')).toHaveValue('bell-single');
   await expect(page.getByTestId('focus-ticking')).toHaveValue('rainforest-rain');
   await page.getByTestId('focus-toggle').click();
