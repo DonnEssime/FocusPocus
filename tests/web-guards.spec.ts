@@ -45,3 +45,23 @@ describe('versions', () => {
     }
   });
 });
+
+describe('focus sounds', () => {
+  const SOUND_DIR = join(WEB_SRC, 'modules', 'focus', 'sounds');
+
+  it('ships a file and a licence row for every registered sound, within the size budget', async () => {
+    const { SOUNDS, DEFAULT_SOUND_IDS, resolveSound } = await import('../web/src/modules/focus/sounds');
+    const licences = readFileSync(join(SOUND_DIR, 'LICENSES.md'), 'utf8');
+    let total = 0;
+    for (const sound of SOUNDS) {
+      const file = join(SOUND_DIR, `${sound.id}.ogg`);
+      total += statSync(file).size;
+      expect(licences, sound.id).toContain(`\`${sound.id}.ogg\``);
+    }
+    expect(total).toBeLessThan(400 * 1024);
+    expect(readdirSync(SOUND_DIR).filter((f) => f.endsWith('.ogg'))).toHaveLength(SOUNDS.length);
+    expect(resolveSound('ticking', DEFAULT_SOUND_IDS.ticking).id).toBe('clock-tick');
+    expect(resolveSound('finishing', 'from-a-newer-build').id).toBe('bell-single');
+    expect(resolveSound('finishing', 'clock-tick').id).toBe('bell-single'); // wrong kind falls back too
+  });
+});

@@ -364,8 +364,10 @@ interface SoundDefinition {
 | `ticking` (looped) | `clock-tick` (default), `rainforest-rain` |
 | `finishing` (once) | a few bell chimes, e.g. `bell-single` (default), `bell-triple`, `chime-soft` |
 
-- **Assets** live in `web/src/modules/focus/sounds/`. Ticking sounds must loop without an audible seam. Use compressed `.ogg`/Opus (or `.mp3`) and keep the whole set small, a few hundred KB at most.
-- **Licensing:** use only CC0 or similarly unrestricted recordings. Record each file's source and licence in `sounds/LICENSES.md`.
+- **Assets** live in `web/src/modules/focus/sounds/` as mono Ogg/Opus, about 220 KB for the whole set; a test keeps it under 400 KB. Ticking sounds must loop without an audible seam.
+- **Generated, not recorded:** the current files are synthesized by `scripts/generate-sounds.mjs`. The script is deterministic and needs `ffmpeg` with libopus to run. Loops are built to be periodic: tick events sit inside the loop, and noise layers are cross-faded circularly. The output is original work, released under CC0.
+- **Replacing a sound with a recording:** keep the same id and file name.
+- **Licensing:** use only CC0 or similarly unrestricted recordings. Record each file's source and licence in `sounds/LICENSES.md`; a test checks that every sound has a row there.
 - **Fallbacks:** an unknown sound id in settings (for example one from a newer build) falls back to that kind's default sound, in the same way as `resolveTheme`.
 
 #### Commands
@@ -373,23 +375,30 @@ interface SoundDefinition {
 | Command | Payload | Undoable |
 | --- | --- | --- |
 | `focus.SetSettings` | partial `{ durationMin?, tickingSoundId?, finishingSoundId? }` | yes |
-| `focus.Start` | `{ sessionId, durationMs, tickingSoundId, finishingSoundId }` | no |
-| `focus.Stop` | `{ sessionId }`, with `deps` on the Start | no |
+| `focus.Start` | `{ startedAt, durationMs, tickingSoundId, finishingSoundId }` | no |
+| `focus.Stop` | `{ sessionId, stoppedAt }`, with `deps` on the Start | no |
+
+- **Session ids:** the session id is the id of its `focus.Start` command.
+- **Wall-clock times:** `startedAt` and `stoppedAt` are the wall-clock times on the computer that issued them. They deliberately don't use the command's hybrid-clock `at`. If another computer's clock runs ahead, that clock pushes `at` forward, which would stretch the timer.
 
 - **Settings are copied into the session.** `focus.Start` stores the length and sounds in its payload, so changing settings while a timer runs only affects the next session. Replay never depends on the current settings.
-- **Completion writes nothing.** A session counts as finished when `now ≥ start.at + durationMs` and no Stop exists. Only Start and Stop are written, at most two writes per session. History stays reconstructable: a session that has no Stop ran to the end.
+- **Completion writes nothing.** A session counts as finished when `now ≥ startedAt + durationMs` and no Stop exists. Only Start and Stop are written, at most two writes per session. History stays reconstructable: a session that has no Stop ran to the end.
 - **The settings form commits on `change`, not on every keystroke or slider step.** Each commit is one command, so one undo step.
 - **No undo for Start/Stop.** Undoing a running or finished timer has no sensible meaning, so the Focus undo stack contains only settings changes.
+- **Stop is lenient.** Stopping a session that already ended, was already stopped, or was replaced is a no-op, not a rejected-on-merge conflict. Such stops are common after merges and harmless.
 
 #### Timing and audio rules
 
-- **Remaining time comes from the clock:** `start.at + durationMs - now`. Never decrement a counter, because browsers throttle timers in background tabs. The display refreshes with `requestAnimationFrame` or a 250 ms interval while the window is visible.
+- **Remaining time comes from the clock:** `startedAt + durationMs - now`. Never decrement a counter, because browsers throttle timers in background tabs. The display refreshes with `requestAnimationFrame` or a 250 ms interval while the window is visible.
 - **Schedule the end on the audio clock.** When the session starts, schedule the finishing sound and the end of the ticking loop on the Web Audio clock (`AudioContext.currentTime + remaining`). This keeps the end exact in background tabs. Stop cancels both.
 - **Autoplay:** browsers only allow audio after a user action. Create or resume the `AudioContext` inside the Start and preview click handlers.
 - **Sounds play in one window per browser:**
   - Only the window that started the session plays its sounds.
   - Other windows, and other computers that see the session through the vault, show the countdown silently.
-  - If the window playing the sounds closes, the session keeps running silently and still ends on time.
+  - If the window playing the sounds closes or reloads, the session keeps running silently and still ends on time.
+  - A Stop from any window or computer silences the window that is playing, because the audio engine follows the state.
+  - When a session ends naturally, the finishing sound is never cut off, even if a new session starts right away.
+- **Engine:** there is one `FocusAudio` per open vault (`web/src/modules/focus/audio.ts`). It fetches the selected sounds ahead of time and decodes them on first use. The ticking loop fades in and out over 50 ms, so there are no clicks.
 - **Concurrent starts:** if a Start meets a session that is still running (for example two computers both started), the newer Start wins and the older session counts as stopped at the newer Start's `at`. This follows the rejected-on-merge rules in §4.5.
 
 ### 10.2 `timetrack`: time tracker
@@ -521,8 +530,8 @@ All of these are undoable through the Time tracking undo stack. Commands that ta
 - [x] Shell: layout tree host (nested tabs and splits), undo/redo bar plus keyboard shortcuts, toasts, status bar
 - [x] Theme registry with **Dark** (default) only; no-hard-coded-colour test
 - [x] i18n registry with **English** only; coverage spec
-- [x] Placeholder panels for both modules, wired to their spec'd settings commands (`focus.SetSettings`, `tt.SetDayWindow`)
-- [ ] `focus` module (§10.1): commands, timer and settings panels, sound registry, audio engine, sound assets plus licences
+- [x] Placeholder panels for the time tracker, wired to its spec'd `tt.SetDayWindow` settings command
+- [x] `focus` module (§10.1): commands, timer and settings panels, sound registry, audio engine, generated sound assets plus licences
 - [ ] `timetrack` core (§10.2): time model (UTC instants, logical days, DST), block and tag commands, overlap truncation, range index, per-day aggregates
 - [ ] `timetrack` time view: Day/Week/Month switch, navigation and date picker, day/week timeline with drag-to-create, running block, month grid with pies
 - [ ] `timetrack` block pop-up (create/edit/delete), Start/Stop tracking

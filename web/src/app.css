@@ -249,9 +249,18 @@ button.link {
 }
 
 .timer .countdown {
-  font-size: 4rem;
+  font-size: 4.5rem;
   font-variant-numeric: tabular-nums;
   font-weight: 300;
+  color: var(--text-muted);
+}
+
+.timer .countdown.running {
+  color: var(--text);
+}
+
+.settings {
+  max-width: 22rem;
 }
 
 .settings {

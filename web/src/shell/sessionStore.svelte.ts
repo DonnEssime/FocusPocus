@@ -7,6 +7,7 @@ export class SessionStore {
   version = $state(0);
   status = $state<VaultSessionStatus>(null!);
   private readonly unsubscribe: () => void;
+  private readonly disposers: Array<() => void> = [];
 
   constructor(readonly vs: VaultSession) {
     this.status = vs.status;
@@ -35,7 +36,13 @@ export class SessionStore {
     return this.vs.session.dispatch(action);
   }
 
+  /** Run `fn` when this store (i.e. the open vault) goes away. */
+  onDispose(fn: () => void): void {
+    this.disposers.push(fn);
+  }
+
   dispose(): void {
     this.unsubscribe();
+    for (const fn of this.disposers.splice(0)) fn();
   }
 }
