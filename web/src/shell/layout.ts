@@ -3,6 +3,9 @@ import type { AppMessageKey } from '@focuspocus/registry';
 /**
  * Layout tree the shell renders. Today it is a fixed default; later it will be vault state
  * (`app.SetLayout`) so users can rearrange panels.
+ *
+ * Convention: tabs switch between modules only. Within a module, all its panels are composed
+ * onto one page with `split` nodes.
  */
 export type LayoutNode =
   | { kind: 'panel'; panel: string }
@@ -15,19 +18,28 @@ export const DEFAULT_LAYOUT: LayoutNode = {
   kind: 'tabs',
   tabs: [
     {
+      // Calendar on the left; the side column will also hold statistics and tags (§10.2).
       title: 'timetrack.title',
       node: {
         kind: 'split',
         direction: 'row',
         children: [
           { node: panel('timetrack.timeView'), weight: 3 },
-          { node: { kind: 'tabs', tabs: [{ node: panel('timetrack.settings') }] }, weight: 1 },
+          { node: { kind: 'split', direction: 'column', children: [{ node: panel('timetrack.settings') }] }, weight: 1 },
         ],
       },
     },
     {
+      // Timer large on the left, settings beside it.
       title: 'focus.title',
-      node: { kind: 'tabs', tabs: [{ node: panel('focus.timer') }, { node: panel('focus.settings') }] },
+      node: {
+        kind: 'split',
+        direction: 'row',
+        children: [
+          { node: panel('focus.timer'), weight: 2 },
+          { node: panel('focus.settings'), weight: 1 },
+        ],
+      },
     },
   ],
 };

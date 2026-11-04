@@ -27,10 +27,8 @@ test('commands persist across reloads and undo/redo is per module', async ({ pag
   await expect(page.getByTestId('day-window-summary')).toContainText('from 08:00');
 
   await page.getByRole('tab', { name: 'Focus' }).click();
-  await page.getByRole('tab', { name: 'Settings' }).last().click();
   await page.getByTestId('focus-duration').fill('50');
   await page.getByTestId('focus-duration').press('Enter');
-  await page.getByRole('tab', { name: 'Timer' }).click();
   await expect(page.getByTestId('focus-countdown')).toHaveText('50:00');
 
   // Undo in the Focus scope leaves time tracking alone.

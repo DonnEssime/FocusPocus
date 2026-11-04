@@ -53,10 +53,8 @@ test('the timer resets at zero, and other windows show it silently', async ({ co
   const a = await context.newPage();
   await a.clock.install();
   await openFocus(a, url);
-  await a.getByRole('tab', { name: 'Settings' }).last().click();
   await a.getByTestId('focus-duration').fill('1');
   await a.getByTestId('focus-duration').press('Enter');
-  await a.getByRole('tab', { name: 'Timer' }).click();
   await expect(a.getByTestId('focus-countdown')).toHaveText('01:00');
   await a.getByTestId('focus-toggle').click();
 
@@ -76,20 +74,15 @@ test('the timer resets at zero, and other windows show it silently', async ({ co
 test('settings: choosing sounds is saved and undoable, settings changes do not affect a running timer', async ({ page }) => {
   await page.clock.install();
   await openFocus(page, vaultUrl('settings'));
-  await page.getByRole('tab', { name: 'Settings' }).last().click();
   await page.getByTestId('focus-ticking').selectOption('rainforest-rain');
   await page.getByTestId('focus-finishing').selectOption('chime-soft');
   await expect(page.locator('.toast')).toHaveCount(0);
   await page.getByTestId('undo').click();
   await expect(page.getByTestId('focus-finishing')).toHaveValue('bell-single');
   await expect(page.getByTestId('focus-ticking')).toHaveValue('rainforest-rain');
-
-  await page.getByRole('tab', { name: 'Timer' }).click();
   await page.getByTestId('focus-toggle').click();
-  await page.getByRole('tab', { name: 'Settings' }).last().click();
   await page.getByTestId('focus-duration').fill('5');
   await page.getByTestId('focus-duration').press('Enter');
-  await page.getByRole('tab', { name: 'Timer' }).click();
   await page.clock.fastForward('00:10');
   await expect(page.getByTestId('focus-countdown')).toHaveText('24:50');
 });

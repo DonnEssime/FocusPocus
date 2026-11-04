@@ -231,6 +231,7 @@ interface ModuleDefinition<S> {
 
 - The **core** knows nothing about the modules. It sends each command to its module by namespace prefix. Each module's state is a separate slice: modules never read another module's slice, and a module's commands never depend on another module's commands.
 - On the UI side, each module provides **panels** (`{ id, module, titleKey, component }`). The shell renders a **layout tree** from the vault (`app.SetLayout`), for example `tabs[timetrack, focus]` today and maybe `split(h, [timetrack, focus])` later. Panels must not assume they fill the whole screen or are the only thing visible.
+- **Layout convention:** tabs switch between **modules** only. Within a module, all its panels are composed onto **one page** in a fixed layout that the module's spec defines, using `split` nodes and no sub-tabs. Each panel shows its title in a small header. On narrow windows, side-by-side panels stack vertically.
 - A shared need between modules (such as "a timer is running" for the title bar) goes through a core-level read-only selector interface. Modules never import each other.
 
 ---
@@ -337,7 +338,7 @@ There is only one session at a time. While it runs, the button reads Stop.
 
 #### Panels
 
-The module provides two panels (§6). The default layout places them as sub-tabs of the Focus tab: `tabs[timetrack, tabs[focus.timer, focus.settings]]`.
+The module provides two panels (§6), shown together on the Focus page: `split(h, [focus.timer ×2, focus.settings ×1])`. The timer takes two-thirds of the width and the settings sit beside it.
 
 - **`focus.timer`:** a large `mm:ss` countdown and a single Start/Stop button.
 - **`focus.settings`:**
@@ -423,7 +424,7 @@ A calendar of tracked **blocks**: time intervals with an optional title and any 
 | `timetrack.tags` | Tag management. |
 | `timetrack.settings` | Day window start and end hours. |
 
-Default layout of the Time tracking tab: `split(h, [timetrack.timeView, tabs[timetrack.stats, timetrack.tags, timetrack.settings]])`, with the time view taking most of the width. Panels talk to each other only through module state. The selected view and date range are **UI state** in a store shared by the module's panels. They are not commands, because navigating is not an undoable change.
+All four panels sit together on the Time tracking page: `split(h, [timetrack.timeView ×3, split(v, [timetrack.stats, timetrack.tags, timetrack.settings]) ×1])`. The time view takes three-quarters of the width, and a side column stacks statistics, tags and settings. Panels talk to each other only through module state. The selected view and date range are **UI state** in a store shared by the module's panels. They are not commands, because navigating is not an undoable change.
 
 #### Views
 

@@ -32,7 +32,8 @@
       onpointerdowncapture={() => shell.setActiveModule(def.module)}
       onfocusincapture={() => shell.setActiveModule(def.module)}
     >
-      <def.component />
+      <h2 class="panel-title"><Msg key={def.titleKey} /></h2>
+      <div class="panel-body"><def.component /></div>
     </section>
   {:else}
     <section class="panel"><Msg key="shell.unknownPanel" params={{ id: node.panel }} /></section>
