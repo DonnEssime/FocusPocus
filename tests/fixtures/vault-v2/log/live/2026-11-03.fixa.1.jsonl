@@ -1,0 +1,8 @@
+{"t":"core.SegmentHeader","format":1,"app":"0.1.0","w":"fixa"}
+{"id":"fixa.8","t":"tt.SetTargetSettings","v":1,"at":1793696400000,"p":{"fulltimeMs":25200000,"applyFrom":"2026-11-01"}}
+{"id":"fixa.9","t":"tt.SetDayTarget","v":1,"at":1793696400001,"p":{"day":"2026-11-02","target":{"percent":100}}}
+{"id":"fixa.a","t":"tt.SetTargetSettings","v":1,"at":1793696400002,"p":{"fulltimeMs":21600000,"applyFrom":null}}
+{"id":"fixa.b","t":"core.Undo","v":1,"at":1793696400003,"p":{"target":"fixa.a"}}
+{"id":"fixa.c","t":"tt.SetBalanceInterval","v":1,"at":1793696400004,"p":{"from":"2026-10-19","to":null}}
+{"id":"fixa.d","t":"tt.SetBalanceInterval","v":1,"at":1793696400005,"p":{"from":"2026-10-19","to":"2026-10-31"}}
+{"id":"fixa.e","t":"tt.SetTargetSettings","v":1,"at":1793696400006,"p":{"enabled":false}}

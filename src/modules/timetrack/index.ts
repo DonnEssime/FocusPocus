@@ -2,8 +2,20 @@ import type { Action } from '../../core/session';
 import { applied, defineCommand, defineModule, rejected, type ApplyResult } from '../../core/module';
 import { EMPTY_INDEX, getBlock, IndexDraft, settleOverlaps, type Block, type BlockIndex } from './blocks';
 import { timetrackCatalog } from './catalog';
+import {
+  INITIAL_TARGETS,
+  isDayKey,
+  isDayTarget,
+  isTargetMs,
+  withDayTarget,
+  withFulltime,
+  type BalanceInterval,
+  type DayTarget,
+  type TargetsState,
+} from './targets';
 
 export type { Block, BlockIndex } from './blocks';
+export type { BalanceInterval, DayTarget, TargetsState } from './targets';
 
 /**
  * Visible part of a logical day, in whole local hours. `endHour <= startHour` means the end
@@ -34,6 +46,8 @@ export interface TimetrackState {
   tags: Readonly<Record<string, Tag>>;
   /** Tag ids in creation order (the order of the tags panel). */
   tagOrder: readonly string[];
+  /** Target hours and the balance interval (§10.2 *Target hours*). */
+  targets: TargetsState;
 }
 
 export const DEFAULT_DAY_WINDOW: DayWindow = { startHour: 7, endHour: 5 };
@@ -95,6 +109,21 @@ export interface EditTagPayload {
 export interface TagIdPayload {
   tagId: string;
 }
+
+export interface SetTargetSettingsPayload {
+  enabled?: boolean;
+  fulltimeMs?: number;
+  /** With `fulltimeMs`: going forward from this day, or `null` = retroactively to all days. */
+  applyFrom?: string | null;
+}
+
+export interface SetDayTargetPayload {
+  day: string;
+  /** `null` (or zero) = no target. */
+  target: DayTarget | null;
+}
+
+export type SetBalanceIntervalPayload = BalanceInterval;
 
 // ---------------------------------------------------------------------------------------------
 // Validation
@@ -325,11 +354,72 @@ const DeleteTag = defineCommand<TimetrackState, TagIdPayload>({
   },
 });
 
+/** Track-targets switch and full-time hours. The switch only hides UI; no data is dropped. */
+const SetTargetSettings = defineCommand<TimetrackState, SetTargetSettingsPayload>({
+  v: 1,
+  undoable: true,
+  apply(state, p) {
+    const { enabled, fulltimeMs, applyFrom } = p ?? {};
+    if (enabled === undefined && fulltimeMs === undefined) return rejected('timetrack.error.noChanges');
+    if (enabled !== undefined && typeof enabled !== 'boolean') return rejected('timetrack.error.invalidTarget');
+    let targets = state.targets;
+    if (enabled !== undefined) targets = { ...targets, enabled };
+    if (fulltimeMs !== undefined) {
+      if (!isTargetMs(fulltimeMs) || fulltimeMs === 0) return rejected('timetrack.error.invalidFulltime');
+      if (applyFrom !== undefined && applyFrom !== null && !isDayKey(applyFrom)) return rejected('timetrack.error.invalidTarget');
+      targets = withFulltime(targets, fulltimeMs, applyFrom ?? null);
+    }
+    return applied({ ...state, targets });
+  },
+});
+
+const SetDayTarget = defineCommand<TimetrackState, SetDayTargetPayload>({
+  v: 1,
+  undoable: true,
+  apply(state, p) {
+    if (!isDayKey(p?.day) || (p.target !== null && !isDayTarget(p.target))) return rejected('timetrack.error.invalidTarget');
+    const target = p.target === null ? null : 'ms' in p.target ? { ms: p.target.ms } : { percent: p.target.percent };
+    return applied({ ...state, targets: withDayTarget(state.targets, p.day, target) });
+  },
+});
+
+const SetBalanceInterval = defineCommand<TimetrackState, SetBalanceIntervalPayload>({
+  v: 1,
+  undoable: true,
+  apply(state, p) {
+    const from = p?.from ?? null;
+    const to = p?.to ?? null;
+    if ((from !== null && !isDayKey(from)) || (to !== null && !isDayKey(to))) return rejected('timetrack.error.invalidTarget');
+    if (from !== null && to !== null && from > to) return rejected('timetrack.error.intervalOrder');
+    return applied({ ...state, targets: { ...state.targets, interval: { from, to } } });
+  },
+});
+
 export const timetrackModule = defineModule<TimetrackState>({
   id: 'timetrack',
   ns: 'tt',
-  initialState: () => ({ dayWindow: { ...DEFAULT_DAY_WINDOW }, blocks: EMPTY_INDEX, runningId: null, tags: {}, tagOrder: [] }),
-  commands: { SetDayWindow, CreateBlock, StartTracking, StopTracking, EditBlock, DeleteBlock, CreateTag, EditTag, DeleteTag },
+  initialState: () => ({
+    dayWindow: { ...DEFAULT_DAY_WINDOW },
+    blocks: EMPTY_INDEX,
+    runningId: null,
+    tags: {},
+    tagOrder: [],
+    targets: INITIAL_TARGETS,
+  }),
+  commands: {
+    SetDayWindow,
+    CreateBlock,
+    StartTracking,
+    StopTracking,
+    EditBlock,
+    DeleteBlock,
+    CreateTag,
+    EditTag,
+    DeleteTag,
+    SetTargetSettings,
+    SetDayTarget,
+    SetBalanceInterval,
+  },
   catalog: timetrackCatalog,
 });
 
@@ -396,4 +486,10 @@ export const timetrackActions = {
   createTag: (p: CreateTagPayload): Action<CreateTagPayload> => ({ t: 'tt.CreateTag', p }),
   editTag: (p: EditTagPayload): Action<EditTagPayload> => ({ t: 'tt.EditTag', p, deps: [p.tagId] }),
   deleteTag: (tagId: string): Action<TagIdPayload> => ({ t: 'tt.DeleteTag', p: { tagId }, deps: [tagId] }),
+  setTargetSettings: (p: SetTargetSettingsPayload): Action<SetTargetSettingsPayload> => ({ t: 'tt.SetTargetSettings', p }),
+  setDayTarget: (day: string, target: DayTarget | null): Action<SetDayTargetPayload> => ({
+    t: 'tt.SetDayTarget',
+    p: { day, target },
+  }),
+  setBalanceInterval: (p: SetBalanceIntervalPayload): Action<SetBalanceIntervalPayload> => ({ t: 'tt.SetBalanceInterval', p }),
 };

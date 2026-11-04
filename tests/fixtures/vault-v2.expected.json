@@ -1,0 +1,74 @@
+{
+  "commands": 14,
+  "issues": {
+    "rejected": [],
+    "unknown": 0,
+    "newer": 0,
+    "invalid": 0
+  },
+  "timetrack": {
+    "dayWindow": {
+      "startHour": 7,
+      "endHour": 5
+    },
+    "runningId": null,
+    "tags": [],
+    "targets": {
+      "enabled": false,
+      "fulltime": [
+        {
+          "from": "",
+          "ms": 28800000
+        },
+        {
+          "from": "2026-11-01",
+          "ms": 25200000
+        }
+      ],
+      "days": [
+        "2026-10-19",
+        "2026-10-20",
+        "2026-10-21",
+        "2026-11-02"
+      ],
+      "targets": [
+        {
+          "percent": 100
+        },
+        {
+          "percent": 50
+        },
+        {
+          "ms": 23400000
+        },
+        {
+          "percent": 100
+        }
+      ],
+      "interval": {
+        "from": "2026-10-19",
+        "to": "2026-10-31"
+      }
+    },
+    "blocks": [
+      {
+        "id": "fixa.7",
+        "startMs": 1792479600000,
+        "endMs": 1792483200000,
+        "title": "Work",
+        "tagIds": [],
+        "start": "2026-10-20T07:00:00.000Z",
+        "end": "2026-10-20T08:00:00.000Z"
+      }
+    ]
+  },
+  "focus": {
+    "settings": {
+      "durationMin": 25,
+      "tickingSoundId": "clock-tick",
+      "finishingSoundId": "bell-single"
+    },
+    "session": null
+  },
+  "app": {}
+}

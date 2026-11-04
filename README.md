@@ -547,16 +547,16 @@ Either way, days with an `hh:mm` target are never affected; the question only co
 ##### Statistics (when targets are on)
 
 - **Shown range** (the current day, week or month): target sum, tracked time and balance over the included days up to today.
-- **Balance over an interval**: a **start date** and an **end date**, or **now** for the end (through today).
+- **Balance over an interval**: a **start date**, or **since the beginning** (the first day with tracked time or a target, the default), and an **end date**, or **now** (through today, the default).
   - The interval is vault state (`tt.SetBalanceInterval`), so it syncs and is undoable, because the user expects to set it often.
   - It is edited in the statistics panel with the date picker popover.
   - This is also how the balance is "zeroed out": move the start date, which changes no tracking data or target settings. Past intervals can be inspected the same way, by setting both dates.
 
 ##### Aggregating over long periods
 
-- **Target sum** over `[from, to]` is computed without visiting every day. Only days with a target of their own contribute, because there are no defaults. They are kept sorted by `DayKey`, so the targets in a range are found by binary search. Percentage targets resolve against the effective-dated full-time list. Cost: O(log n + targets in range).
-- **Tracked time** over a long interval uses per-bucket totals cached by bucket identity (a `WeakMap` keyed by the immutable bucket arrays of the block index). Buckets fully inside the range add their cached total; only the edge buckets are scanned. Copy-on-write invalidates exactly the buckets a command touched. Cost: O(buckets), about 300 for 10 years, instead of O(blocks).
-- **Benchmark target:** a balance over 10 years in under 5 ms.
+- **Target sum** over `[from, to]` (`targets.ts`) is computed without visiting every day. Only days with a target of their own contribute, because there are no defaults. They are kept sorted by `DayKey`, so the targets in a range are found by binary search. Percentage targets resolve against the effective-dated full-time list. Cost: O(log n + targets in range).
+- **Tracked time** over a long interval (`trackedBefore` in `blocks.ts`) uses per-bucket totals cached by bucket identity (a `WeakMap` keyed by the immutable bucket arrays of the block index). Buckets fully inside the range add their cached total; only the edge buckets are scanned. Copy-on-write invalidates exactly the buckets a command touched. Cost: O(buckets), about 300 for 10 years, instead of O(blocks).
+- **Benchmark** (`tests/timetrack-targets.spec.ts`): a balance over 10 years (36,500 blocks, 2,600 targets) takes about 0.2 ms; the test allows 5 ms.
 - **What does and doesn't shift the balance:** changing the day start hour only moves time across day boundaries at the edges of the interval. Time zones never change targets, because targets are calendar dates.
 
 ##### Commands
@@ -565,9 +565,9 @@ Either way, days with an `hh:mm` target are never affected; the question only co
 | --- | --- | --- |
 | `tt.SetTargetSettings` | `{ enabled?, fulltimeMs?, applyFrom? }` | with `fulltimeMs`: `applyFrom: DayKey` = going forward from that day (the UI sends today), `null` = retroactively to all days |
 | `tt.SetDayTarget` | `{ day, target: { percent } \| { ms } \| null }` | `null` (or 0 %) = no target |
-| `tt.SetBalanceInterval` | `{ from: DayKey, to: DayKey \| null }` | `to: null` = now; `from <= to` |
+| `tt.SetBalanceInterval` | `{ from: DayKey \| null, to: DayKey \| null }` | `from: null` = since the beginning; `to: null` = now; `from <= to` |
 
-All of these are undoable. They add new command types; the frozen `tt.*` payloads above don't change. Add a second fixture vault containing them when they are implemented.
+All of these are undoable. They add new command types; the frozen `tt.*` payloads above don't change. They are frozen by the second fixture vault, `tests/fixtures/vault-v2`.
 
 #### Commands
 
@@ -660,7 +660,7 @@ These are deliberately left out: editing several blocks at once, copy/paste, sea
   - [x] 6. Block pop-up, drag-to-create, click-to-edit, Start/Stop tracking
   - [x] 7. Block resizing (edge handles, clamping, zero-length delete), statistics panel, final page layout
 - [ ] `timetrack` target hours (§10.2 *Target hours*, requested):
-  - [ ] 8. Domain: target settings (effective-dated full time), day targets, balance interval; fast target-sum and tracked-sum queries plus benchmark; second fixture vault
+  - [x] 8. Domain: target settings (effective-dated full time), day targets, balance interval; fast target-sum and tracked-sum queries plus benchmark; second fixture vault
   - [ ] 9. Settings pop-up: enable checkbox, full-time hours with the "going forward / retroactively" question
   - [ ] 10. Day view target chip, week-header balances, target popover (0/50/100 %, `hh:mm` / `%` entry)
   - [ ] 11. Statistics: shown-range balance, interval balance with start/end (or now) editor

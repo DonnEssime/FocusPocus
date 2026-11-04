@@ -360,7 +360,14 @@ describe('determinism', () => {
       else if (roll < 0.6) w.dispatch(tt.createTag({ name: `t${step}`, color: nextTagColor(st), description: '' }));
       else if (roll < 0.62 && tags.length) w.dispatch(tt.deleteTag(pick(tags)!));
       else if (roll < 0.64 && tags.length) w.dispatch(tt.editTag({ tagId: pick(tags)!, name: `n${step}` }));
-      else if (roll < 0.76) w.undo('timetrack');
+      else if (roll < 0.67) {
+        const day = `2026-11-${String(1 + Math.floor(random() * 9)).padStart(2, '0')}`;
+        const r = random();
+        if (r < 0.4) w.dispatch(tt.setDayTarget(day, { percent: Math.floor(random() * 3) * 50 }));
+        else if (r < 0.7) w.dispatch(tt.setDayTarget(day, { ms: Math.floor(random() * 40) * 15 * M }));
+        else if (r < 0.9) w.dispatch(tt.setTargetSettings({ fulltimeMs: (6 + Math.floor(random() * 4)) * H, applyFrom: random() < 0.5 ? null : day }));
+        else w.dispatch(tt.setBalanceInterval({ from: random() < 0.5 ? null : day, to: null }));
+      } else if (roll < 0.76) w.undo('timetrack');
       else if (roll < 0.84) w.redo('timetrack');
       else w.ingest(pick(writers)!.runner.commands());
       // Invariants hold after every step: sorted, no overlaps (ignoring the running block's growth).
@@ -381,9 +388,11 @@ describe('determinism', () => {
     const ref = reference.getState<TimetrackState>('timetrack');
     expect(reference.commands().filter((c) => c.t === 'core.Undo').length).toBeGreaterThan(100);
     expect([...allBlocks(ref.blocks)].length).toBeGreaterThan(10);
+    expect(ref.targets.days.length).toBeGreaterThan(0);
     for (const w of writers) {
       expect([...allBlocks(state(w).blocks)]).toEqual([...allBlocks(ref.blocks)]);
       expect(state(w).tags).toEqual(ref.tags);
+      expect(state(w).targets).toEqual(ref.targets);
       expect(state(w).runningId).toEqual(ref.runningId);
       expect(w.runner.issues().rejected).toEqual(reference.issues().rejected);
     }

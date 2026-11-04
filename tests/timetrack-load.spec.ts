@@ -104,18 +104,26 @@ describe('scale', () => {
   });
 });
 
-describe('frozen fixture vault v1', () => {
-  it('loads to exactly the recorded state', async () => {
-    const dir = join(FIXTURES, 'vault-v1');
-    const backend = new MemoryBackend(() => Date.UTC(2026, 10, 4));
-    const walk = (d: string): string[] =>
-      readdirSync(d).flatMap((n) => (statSync(join(d, n)).isDirectory() ? walk(join(d, n)) : [join(d, n)]));
-    for (const file of walk(dir)) await backend.write(relative(dir, file), new Uint8Array(readFileSync(file)));
-    const vault = await Vault.open(backend, { writerId: 'reader', now: backend.now });
-    expect(vault.readOnlyReason).toBeNull();
-    const session = new Session({ modules: MODULES, writerId: 'reader' });
-    session.ingest(await vault.loadAll());
-    const expected = JSON.parse(readFileSync(join(FIXTURES, 'vault-v1.expected.json'), 'utf8'));
-    expect(JSON.parse(JSON.stringify(summarize(session)))).toEqual(expected);
-  });
+/** Frozen vaults: each must keep loading to exactly its recorded state, forever. */
+const FROZEN = [
+  { name: 'vault-v1', options: {} },
+  { name: 'vault-v2', options: { targets: true } }, // adds target hours
+];
+
+describe('frozen fixture vaults', () => {
+  for (const { name, options } of FROZEN) {
+    it(`${name} loads to exactly the recorded state`, async () => {
+      const dir = join(FIXTURES, name);
+      const backend = new MemoryBackend(() => Date.UTC(2026, 10, 4));
+      const walk = (d: string): string[] =>
+        readdirSync(d).flatMap((n) => (statSync(join(d, n)).isDirectory() ? walk(join(d, n)) : [join(d, n)]));
+      for (const file of walk(dir)) await backend.write(relative(dir, file), new Uint8Array(readFileSync(file)));
+      const vault = await Vault.open(backend, { writerId: 'reader', now: backend.now });
+      expect(vault.readOnlyReason).toBeNull();
+      const session = new Session({ modules: MODULES, writerId: 'reader' });
+      session.ingest(await vault.loadAll());
+      const expected = JSON.parse(readFileSync(join(FIXTURES, `${name}.expected.json`), 'utf8'));
+      expect(JSON.parse(JSON.stringify(summarize(session, options)))).toEqual(expected);
+    });
+  }
 });

@@ -103,6 +103,44 @@ export function neighbours(index: BlockIndex, block: Block): { prev?: Block; nex
   return { ...(prev ? { prev } : {}), ...(next ? { next } : {}) };
 }
 
+/** Σ durations of the finished blocks of one bucket, cached by the bucket's (immutable) identity. */
+const finishedSums = new WeakMap<readonly Block[], number>();
+
+function finishedSum(list: readonly Block[]): number {
+  let sum = finishedSums.get(list);
+  if (sum === undefined) {
+    sum = 0;
+    for (const b of list) if (b.endMs !== null) sum += b.endMs - b.startMs;
+    finishedSums.set(list, sum);
+  }
+  return sum;
+}
+
+/**
+ * Tracked time before instant `t` (all of history up to `t`); tracked time in `[from, to)` is
+ * `trackedBefore(to) − trackedBefore(from)`. Buckets entirely before `t` add their cached total,
+ * so the cost is O(buckets), not O(blocks). Copy-on-write means an edit invalidates only the
+ * buckets it touched. The running block counts up to `now`.
+ */
+export function trackedBefore(index: BlockIndex, t: number, now: number, running?: Block): number {
+  const kt = bucketOf(t);
+  let sum = 0;
+  let i = 0;
+  for (; i < index.keys.length && index.keys[i]! < kt; i++) sum += finishedSum(index.lists[i]!);
+  if (index.keys[i] === kt) {
+    for (const b of index.lists[i]!) if (b.endMs !== null && b.startMs < t) sum += Math.min(b.endMs, t) - b.startMs;
+  }
+  // Only the last block before t's bucket can reach past t (blocks never overlap).
+  const last = i > 0 ? index.lists[i - 1]!.at(-1) : undefined;
+  if (last && last.endMs !== null && last.endMs > t) sum -= last.endMs - t;
+  if (running && running.startMs < t) sum += Math.min(effectiveEnd(running, now), t) - running.startMs;
+  return sum;
+}
+
+export function firstBlock(index: BlockIndex): Block | undefined {
+  return index.lists[0]?.[0];
+}
+
 export function* allBlocks(index: BlockIndex): Generator<Block> {
   for (const list of index.lists) yield* list;
 }
