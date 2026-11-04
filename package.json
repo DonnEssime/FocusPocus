@@ -1,0 +1,24 @@
+{
+  "name": "focuspocus",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first time tracker and focus timer backed by a synced vault folder.",
+  "workspaces": [
+    "web"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w web",
+    "build:web": "npm run build -w web",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "check": "npm run typecheck && npm run check -w web",
+    "test:e2e": "npm run test:e2e -w web"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.2"
+  }
+}
