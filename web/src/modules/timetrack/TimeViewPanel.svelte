@@ -9,9 +9,9 @@
   import Popover from '../../shell/ui/Popover.svelte';
   import BlockDialog from './BlockDialog.svelte';
   import DatePicker from './DatePicker.svelte';
+  import TargetFigure from './TargetFigure.svelte';
   import TargetPopover from './TargetPopover.svelte';
   import { dayTargetView } from './targetView';
-  import { formatBalance, formatClock } from '@focuspocus/modules/timetrack/targets';
   import type { DayKey } from '@focuspocus/modules/timetrack/time';
   import { formatDay, formatDayRange } from './format';
   import MonthGrid from './MonthGrid.svelte';
@@ -76,19 +76,11 @@
       <button
         type="button"
         class="target-chip"
-        class:over={dayView.balanceMs > 0}
-        class:under={dayView.balanceMs < 0}
         data-testid="tt-target-chip"
+        title={msgText('timetrack.targets.setTarget')}
         onclick={(e) => editTarget(dayView.day, e.currentTarget)}
       >
-        {#if dayView.future}
-          <Msg key="timetrack.targets.chipFuture" params={{ target: formatClock(dayView.targetMs) }} />
-        {:else}
-          <Msg
-            key="timetrack.targets.chip"
-            params={{ target: formatClock(dayView.targetMs), tracked: formatClock(dayView.trackedMs), balance: formatBalance(dayView.balanceMs) }}
-          />
-        {/if}
+        <TargetFigure view={dayView} />
       </button>
     {/if}
     <span class="spacer"></span>

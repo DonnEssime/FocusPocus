@@ -47,18 +47,18 @@ test('the Day view chip sets targets by shortcut or typed hh:mm / %, and refuses
   await enableTargets(page);
   await page.getByTestId('tt-view-day').click();
   const chip = page.getByTestId('tt-target-chip');
-  await expect(chip).toHaveText('Target 0:00 · 2:00 tracked · +2:00');
+  await expect(chip).toHaveText('2:00 / 0:00 → +2:00');
 
   await chip.click();
   await page.getByTestId('tt-target-100').click();
-  await expect(chip).toHaveText('Target 8:00 · 2:00 tracked · −6:00');
+  await expect(chip).toHaveText('2:00 / 8:00 → −6:00');
   await chip.click();
   await page.getByTestId('tt-target-50').click();
-  await expect(chip).toContainText('Target 4:00');
+  await expect(chip).toHaveText('2:00 / 4:00 → −2:00');
   await setTarget(page, chip, '6:30');
-  await expect(chip).toContainText('Target 6:30');
+  await expect(chip).toHaveText('2:00 / 6:30 → −4:30');
   await setTarget(page, chip, '62.5%');
-  await expect(chip).toContainText('Target 5:00');
+  await expect(chip).toHaveText('2:00 / 5:00 → −3:00');
 
   await chip.click();
   await expect(page.getByTestId('tt-target-input')).toHaveValue('62.5%');
@@ -66,17 +66,22 @@ test('the Day view chip sets targets by shortcut or typed hh:mm / %, and refuses
   await page.getByTestId('tt-target-input').press('Enter');
   await expect(page.getByTestId('tt-target-error')).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(chip).toContainText('Target 5:00');
+  await expect(chip).toHaveText('2:00 / 5:00 → −3:00');
 
   await chip.click();
   await page.getByTestId('tt-target-0').click();
-  await expect(chip).toContainText('Target 0:00');
+  await expect(chip).toHaveText('2:00 / 0:00 → +2:00');
   await page.getByTestId('undo').click();
-  await expect(chip).toContainText('Target 5:00');
+  await expect(chip).toHaveText('2:00 / 5:00 → −3:00');
 
-  // A future day shows only its target.
+  // A future day shows its target only; a day with neither tracked time nor a target shows –.
   await page.getByTestId('tt-next').click();
-  await expect(chip).toHaveText('Target 0:00');
+  await expect(chip).toHaveText('–');
+  await setTarget(page, chip, '100%');
+  await expect(chip).toHaveText('0:00 / 8:00');
+  await page.getByTestId('tt-prev').click();
+  await page.getByTestId('tt-prev').click();
+  await expect(chip).toHaveText('–');
 });
 
 test('changing full-time hours asks: going forward keeps the past, retroactively changes it', async ({ page }) => {
@@ -151,4 +156,23 @@ test('statistics: balance of the shown range (up to today) and over the chosen i
   // A wholly future range has nothing to count.
   await page.getByTestId('tt-next').click();
   await expect(range).toContainText('still ahead');
+});
+
+test('the month view shows worked / target → balance per day, coloured', async ({ page }) => {
+  await openTracker(page, 'targets-month');
+  await dispatch(page, 'tt.SetTargetSettings', { enabled: true });
+  await dispatch(page, 'tt.SetDayTarget', { day: '2026-11-02', target: { percent: 100 } });
+  await dispatch(page, 'tt.SetDayTarget', { day: '2026-11-03', target: { percent: 100 } });
+  await dispatch(page, 'tt.SetDayTarget', { day: '2026-11-06', target: { percent: 50 } }); // future
+  await createBlock(page, D4 - 48 * H + H, D4 - 48 * H + 10 * H); // Monday: 9 h
+  await createBlock(page, D4 - 24 * H + H, D4 - 24 * H + 5 * H); // Tuesday: 4 h
+  await page.getByTestId('tt-view-month').click();
+  const cell = (day: string) => page.locator(`[data-testid="tt-month-day"][data-day="${day}"]`);
+  await expect(cell('2026-11-02').getByTestId('tt-target-figure')).toHaveText('9:00 / 8:00 → +1:00');
+  await expect(cell('2026-11-02').getByTestId('tt-target-balance')).toHaveClass(/over/);
+  await expect(cell('2026-11-03').getByTestId('tt-target-figure')).toHaveText('4:00 / 8:00 → −4:00');
+  await expect(cell('2026-11-03').getByTestId('tt-target-balance')).toHaveClass(/under/);
+  await expect(cell('2026-11-06').getByTestId('tt-target-figure')).toHaveText('0:00 / 4:00');
+  await expect(cell('2026-11-05').getByTestId('tt-target-figure')).toHaveText('');
+  await expect(page.getByTestId('tt-month-total')).toHaveCount(0); // replaced by the figure
 });

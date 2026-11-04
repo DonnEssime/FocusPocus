@@ -518,8 +518,9 @@ Each logical day can have a **target**: how long you intend to work that day. Th
   - `{ ms }`: an absolute duration, entered as `hh:mm`. It never changes when settings change.
   - nothing: target 0. Choosing 0 % clears the day's entry, so "0 %" and "no target" are the same thing.
 - **Setting it** (when targets are on):
-  - **Day view:** a target chip next to the date label, for example "Target 8:00 · 6:15 tracked · −1:45".
+  - **Day view:** a target chip next to the date label, reading `worked / target → balance`, for example "6:15 / 8:00 → −1:45". A future day shows its target only ("0:00 / 8:00"); a day with neither tracked time nor a target shows "–". Only the balance is coloured.
   - **Week view:** each day column header shows that day's balance compactly.
+  - **Month view:** each day cell shows the same `worked / target → balance` figure in place of its total, with the balance coloured (over / under) as everywhere else. Days that don't count stay empty, to keep the grid calm.
   - Clicking either opens a popover with:
     - shortcut buttons **0 %**, **50 %** and **100 %**;
     - a free entry field accepting `hh:mm` (`6:30`, `06:30`) or a percentage (`75%`, `62.5 %`). Valid ranges are 0:00–24:00 and 0–300 %. Anything else is refused inline. Enter saves and Esc cancels.

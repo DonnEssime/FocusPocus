@@ -6,6 +6,8 @@
   import { tagColor } from './colors';
   import { formatDay, formatDuration } from './format';
   import Pie, { type PieSlice } from './Pie.svelte';
+  import TargetFigure from './TargetFigure.svelte';
+  import { dayTargetView } from './targetView';
   import type { TimetrackUi } from './ui.svelte';
 
   let { ui, tt }: { ui: TimetrackUi; tt: TimetrackState } = $props();
@@ -48,8 +50,13 @@
         onclick={() => ui.openDay(day)}
       >
         <span class="month-date">{Number(day.slice(8))}</span>
-        {#if total.totalMs > 0}
+        {#if tt.targets.enabled}
+          <!-- Same figure as the Day view chip; days that don't count stay empty to keep the grid calm. -->
+          <span class="month-target"><TargetFigure view={dayTargetView(tt, day, ui)} empty="" /></span>
+        {:else if total.totalMs > 0}
           <span class="month-total" data-testid="tt-month-total">{formatDuration(total.totalMs)}</span>
+        {/if}
+        {#if total.totalMs > 0}
           <span class="month-pie"><Pie slices={slices(day)} radius={radius(total.totalMs)} /></span>
         {/if}
       </button>

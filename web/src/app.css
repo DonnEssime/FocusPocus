@@ -1014,12 +1014,10 @@ button.danger-button {
   font-variant-numeric: tabular-nums;
 }
 
-.target-chip.over,
 .tl-daytarget.over {
   color: var(--success);
 }
 
-.target-chip.under,
 .tl-daytarget.under {
   color: var(--warning);
 }
@@ -1102,4 +1100,16 @@ input.invalid {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.target-figure {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.month-target {
+  font-size: 0.75rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
