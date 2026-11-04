@@ -1,6 +1,7 @@
 import HistoryPanel from '../../shell/HistoryPanel.svelte';
 import type { PanelDefinition } from '../../shell/panels';
 import SettingsPanel from './SettingsPanel.svelte';
+import TagsPanel from './TagsPanel.svelte';
 import TimeViewPanel from './TimeViewPanel.svelte';
 
 export const timetrackPanels: PanelDefinition[] = [
@@ -12,5 +13,6 @@ export const timetrackPanels: PanelDefinition[] = [
     component: HistoryPanel,
     props: { module: 'timetrack' },
   },
+  { id: 'timetrack.tags', module: 'timetrack', titleKey: 'timetrack.panel.tags', component: TagsPanel },
   { id: 'timetrack.settings', module: 'timetrack', titleKey: 'timetrack.panel.settings', component: SettingsPanel },
 ];

@@ -25,7 +25,7 @@ export const DEFAULT_LAYOUT: LayoutNode = {
   kind: 'tabs',
   tabs: [
     {
-      // Calendar on the left; the side column will also hold statistics and tags (§10.2).
+      // Calendar on the left; the side column holds history, statistics, tags and settings (§10.2).
       title: 'timetrack.title',
       node: {
         kind: 'split',
@@ -36,7 +36,11 @@ export const DEFAULT_LAYOUT: LayoutNode = {
             node: {
               kind: 'split',
               direction: 'column',
-              children: [{ node: panel('timetrack.history'), fit: true }, { node: panel('timetrack.settings') }],
+              children: [
+                { node: panel('timetrack.history'), fit: true },
+                { node: panel('timetrack.tags') },
+                { node: panel('timetrack.settings'), fit: true },
+              ],
             },
             weight: 1,
           },

@@ -41,3 +41,8 @@ export async function createTag(page: Page, name: string, color: string): Promis
 export async function createBlock(page: Page, startMs: number, endMs: number, title = '', tagIds: string[] = []): Promise<string> {
   return dispatch(page, 'tt.CreateBlock', { startMs, endMs, title, tagIds }, tagIds);
 }
+
+/** Writes are coalesced (2 s); wait for them before reloading. */
+export async function waitSaved(page: Page): Promise<void> {
+  await page.getByTestId('save-status').filter({ hasText: 'All changes saved' }).waitFor({ timeout: 15_000 });
+}

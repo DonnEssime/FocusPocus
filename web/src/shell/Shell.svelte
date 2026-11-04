@@ -56,7 +56,7 @@
     if (!r.ok) toast(r.reason, r.params);
   }
 
-  setShell({ setActiveModule: (id) => (activeModule = id), run, undo, redo });
+  setShell({ setActiveModule: (id) => (activeModule = id), run, notify: toast, undo, redo });
 
   // Dev-only test hook (removed from production builds): lets e2e tests seed data through commands.
   if (import.meta.env.DEV) {
