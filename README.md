@@ -573,26 +573,6 @@ All of these are undoable. They add new command types; the frozen `tt.*` payload
 
 | Command | Payload | Notes |
 | --- | --- | --- |
-| `tt.SetTargetSettings` | `{ enabled?, fulltimeMs?, applyFrom? }` | `applyFrom: DayKey` = from that day on, `null` = all days; see *Changing the full-time hours* |
-| `tt.SetWeekdayTargets` (open) | `{ percents: number[7], applyFrom? }` | Monday first |
-| `tt.SetDayTarget` | `{ day, target: { percent } \| { ms } \| null }` | `null` = back to the default |
-| `tt.SetBalanceInterval` | `{ from: DayKey, to: DayKey \| null }` | `to: null` = now |
-| `tt.AddBalanceAdjustment` | `{ day, ms, note }` | id = command id; Zero out fills `ms` |
-| `tt.DeleteBalanceAdjustment` | `{ adjustmentId }` | `deps: [adjustmentId]` |
-
-All of these are undoable. They add new command types; the frozen `tt.*` payloads above don't change. Add a second fixture vault containing them when they are implemented.
-
-##### Aggregating over long periods
-
-- **Target sum** over `[from, to]` is computed arithmetically, never by visiting every day: for each effective-dated full-time segment, count the weekdays in the overlap, times the weekday defaults; then correct for the day overrides inside the range. Overrides are kept sorted by `DayKey`, so a range of them is found by binary search. Cost: O(segments + overrides in range).
-- **Tracked time** over a long interval uses per-bucket totals cached by bucket identity (a `WeakMap` keyed by the immutable bucket arrays of the block index). Buckets fully inside the range add their cached total; only the edge buckets are scanned. Copy-on-write invalidates exactly the buckets a command touched. Cost: O(buckets), about 300 for 10 years, instead of O(blocks).
-- **Benchmark target:** an overall balance over 10 years in under 5 ms.
-- **What does and doesn't shift the balance:** changing the day start hour only moves time across day boundaries at the edges of the interval. Time zones never change targets, because targets are calendar dates.
-
-#### Commands
-
-| Command | Payload | Notes |
-| --- | --- | --- |
 | `tt.CreateBlock` | `{ startMs, endMs, title, tagIds }` | the block id is this command's id; `deps` on the tags |
 | `tt.StartTracking` | `{ startMs, title, tagIds }` | the block id is this command's id; ends any other running block; `deps` on the tags |
 | `tt.StopTracking` | `{ blockId, endMs }` | `deps: [blockId]`; undoing it makes the block run again (a later Start still ends it) |
