@@ -14,12 +14,23 @@ export const shellCatalog = {
   'shell.picker.unsupported': {
     en: 'This browser cannot open folders on disk. Please use a recent desktop version of Chrome or Edge.',
   },
+  'shell.picker.embedded': {
+    en: 'This page is shown inside another app (for example VS Code’s built-in browser), which cannot open folders on disk. Open it directly in Chrome or Edge.',
+  },
   'shell.picker.notAVault': {
     en: 'That folder is not empty and is not a FocusPocus vault. Pick an existing vault or an empty folder.',
   },
   'shell.picker.permissionDenied': { en: 'Permission to use the folder was not granted.' },
   'shell.picker.openFailed': { en: 'The vault could not be opened: {error}' },
   'shell.picker.loading': { en: 'Opening vault…' },
+  'shell.picker.step.picking': { en: 'Waiting for the folder dialog…' },
+  'shell.picker.step.permission': { en: 'Checking permission to edit the folder…' },
+  'shell.picker.step.inspecting': { en: 'Reading the folder…' },
+  'shell.picker.step.creating': { en: 'Creating a new vault…' },
+  'shell.picker.step.loading': { en: 'Loading the vault…' },
+  'shell.picker.cancelled': {
+    en: 'No folder was opened. If Chrome asked whether this site may edit files in the folder, choose “Edit files”.',
+  },
   'shell.undo': { en: 'Undo' },
   'shell.redo': { en: 'Redo' },
   'shell.panel.history': { en: 'History' },

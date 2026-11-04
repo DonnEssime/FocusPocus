@@ -13,8 +13,23 @@ export interface OpenedVault {
 
 export type OpenResult = { ok: true; opened: OpenedVault } | { ok: false; error: AppMessageKey; params?: MessageParams };
 
+export type OpenStep = 'permission' | 'inspecting' | 'creating' | 'loading';
+
+function trace(message: string, ...rest: unknown[]): void {
+  console.info(`[FocusPocus] ${message}`, ...rest);
+}
+
 export function isFsAccessSupported(): boolean {
   return typeof window.showDirectoryPicker === 'function';
+}
+
+/** Embedded frames/webviews (e.g. VS Code's Simple Browser) may not show a folder picker. */
+export function isEmbedded(): boolean {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true; // cross-origin parent
+  }
 }
 
 export async function hasPermission(handle: FileSystemDirectoryHandle): Promise<boolean> {
@@ -26,12 +41,18 @@ export async function requestPermission(handle: FileSystemDirectoryHandle): Prom
   return (await handle.requestPermission({ mode: 'readwrite' })) === 'granted';
 }
 
-/** Returns null when the user cancels the picker. */
+/** Returns null when the user cancels the picker (or declines Chrome's "edit files" prompt). */
 export async function pickFolder(): Promise<FileSystemDirectoryHandle | null> {
   try {
-    return await window.showDirectoryPicker!({ id: 'focuspocus-vault', mode: 'readwrite' });
+    const handle = await window.showDirectoryPicker!({ id: 'focuspocus-vault', mode: 'readwrite' });
+    trace(`picked folder "${handle.name}"`);
+    return handle;
   } catch (e) {
-    if (e instanceof DOMException && e.name === 'AbortError') return null;
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      trace('folder picker cancelled', e.message);
+      return null;
+    }
+    console.error('[FocusPocus] folder picker failed', e);
     throw e;
   }
 }
@@ -43,12 +64,29 @@ function webLock(name: string, fn: () => Promise<void>): Promise<void> {
   });
 }
 
-export async function openVault(handle: FileSystemDirectoryHandle, options: { remember: boolean }): Promise<OpenResult> {
+export async function openVault(
+  handle: FileSystemDirectoryHandle,
+  options: { remember: boolean; onStep?: (step: OpenStep) => void },
+): Promise<OpenResult> {
+  const step = (s: OpenStep) => {
+    trace(`open "${handle.name}": ${s}`);
+    options.onStep?.(s);
+  };
   try {
+    step('permission');
+    const permission = await handle.queryPermission({ mode: 'readwrite' });
+    trace(`permission: ${permission}`);
+    if (permission !== 'granted') return { ok: false, error: 'shell.picker.permissionDenied' };
+    step('inspecting');
     const backend = new FsAccessBackend(handle);
     const kind = await inspectVaultFolder(backend);
+    trace(`folder kind: ${kind}`);
     if (kind === 'other') return { ok: false, error: 'shell.picker.notAVault' };
-    if (kind === 'empty') await createVault(backend);
+    if (kind === 'empty') {
+      step('creating');
+      await createVault(backend);
+    }
+    step('loading');
     const vs = await VaultSession.open(backend, {
       modules: MODULES,
       broadcast: createBroadcastChannelPort,
@@ -56,8 +94,10 @@ export async function openVault(handle: FileSystemDirectoryHandle, options: { re
     });
     if (options.remember) await saveVaultHandle(handle);
     vs.start();
+    trace(`opened vault "${handle.name}"`);
     return { ok: true, opened: { vs, name: handle.name } };
   } catch (e) {
+    console.error(`[FocusPocus] opening "${handle.name}" failed`, e);
     return { ok: false, error: 'shell.picker.openFailed', params: { error: e instanceof Error ? e.message : String(e) } };
   }
 }

@@ -7,25 +7,40 @@
   import {
     devOpfsHandle,
     hasPermission,
+    isEmbedded,
     isFsAccessSupported,
     openVault,
     pickFolder,
     requestPermission,
     type OpenedVault,
     type OpenResult,
+    type OpenStep,
   } from './vaultOpening';
 
   let { onopen, autoOpen = true }: { onopen: (opened: OpenedVault) => void; autoOpen?: boolean } = $props();
 
-  let phase = $state<'loading' | 'choose' | 'reopen' | 'unsupported'>('loading');
+  let phase = $state<'loading' | 'choose' | 'reopen' | 'unsupported' | 'embedded'>('loading');
   let stored = $state<FileSystemDirectoryHandle | null>(null);
   let error = $state<{ key: AppMessageKey; params?: MessageParams } | null>(null);
   let busy = $state(false);
+  let step = $state<OpenStep | 'picking' | null>(null);
+  const STEP_KEYS: Record<OpenStep | 'picking', AppMessageKey> = {
+    picking: 'shell.picker.step.picking',
+    permission: 'shell.picker.step.permission',
+    inspecting: 'shell.picker.step.inspecting',
+    creating: 'shell.picker.step.creating',
+    loading: 'shell.picker.step.loading',
+  };
+  const onStep = (s: OpenStep) => (step = s);
 
   onMount(async () => {
     const dev = await devOpfsHandle();
     if (dev) {
-      await finish(openVault(dev, { remember: false }));
+      await finish(openVault(dev, { remember: false, onStep }));
+      return;
+    }
+    if (isEmbedded()) {
+      phase = 'embedded';
       return;
     }
     if (!isFsAccessSupported()) {
@@ -34,7 +49,7 @@
     }
     stored = await loadVaultHandle();
     if (stored && autoOpen && (await hasPermission(stored))) {
-      if (await finish(openVault(stored, { remember: true }))) return;
+      if (await finish(openVault(stored, { remember: true, onStep }))) return;
     }
     phase = stored ? 'reopen' : 'choose';
   });
@@ -59,9 +74,10 @@
         error = { key: 'shell.picker.permissionDenied' };
         return;
       }
-      await finish(openVault(stored, { remember: true }));
+      await finish(openVault(stored, { remember: true, onStep }));
     } finally {
       busy = false;
+      step = null;
     }
   }
 
@@ -69,12 +85,15 @@
     busy = true;
     error = null;
     try {
+      step = 'picking';
       const handle = await pickFolder();
-      if (handle) await finish(openVault(handle, { remember: true }));
+      if (handle) await finish(openVault(handle, { remember: true, onStep }));
+      else error = { key: 'shell.picker.cancelled' };
     } catch (e) {
       error = { key: 'shell.picker.openFailed', params: { error: e instanceof Error ? e.message : String(e) } };
     } finally {
       busy = false;
+      step = null;
     }
   }
 </script>
@@ -86,6 +105,8 @@
       <p class="muted"><Msg key="shell.picker.loading" /></p>
     {:else if phase === 'unsupported'}
       <p class="error"><Msg key="shell.picker.unsupported" /></p>
+    {:else if phase === 'embedded'}
+      <p class="error" data-testid="picker-embedded"><Msg key="shell.picker.embedded" /></p>
     {:else}
       <p><Msg key="shell.picker.intro" /></p>
       {#if phase === 'reopen' && stored}
@@ -97,6 +118,9 @@
         <button type="button" class="primary" disabled={busy} onclick={choose}><Msg key="shell.picker.choose" /></button>
       {/if}
       <p class="muted small"><Msg key="shell.picker.chooseHint" /></p>
+    {/if}
+    {#if step}
+      <p class="muted" role="status" data-testid="picker-step"><Msg key={STEP_KEYS[step]} /></p>
     {/if}
     {#if error}
       <p class="error" role="alert"><Msg key={error.key} params={error.params} /></p>
