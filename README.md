@@ -119,7 +119,7 @@ We keep the reference's design and make it fully append-only:
 - **Dependency-aware.** You can't undo a command while active later commands depend on it, unless the undo cascades and the UI shows the user which commands will go with it.
 - **Redo is also a command:** `core.Undo` aimed at an earlier `core.Undo`. The reference did redo by *popping* the trailing Undo line, which rewrites the log. That breaks append-only storage and sync, so we never delete log lines.
 - **Undo scope.** Each module has its own undo stack, and the `app` module has one too. Undo in the time-tracker tab never reverts a focus-timer action. The log is shared, so scoping is done by the command's namespace.
-- **Undo UI.** There are no global undo/redo buttons. A module that wants visible buttons adds the shared **History panel** (`HistoryPanel.svelte`, one instance per module, bound to that module's stack) to its page. Keyboard shortcuts work everywhere: Cmd/Ctrl+Z and Shift+Cmd/Ctrl+Z (or Ctrl+Y) act on the module whose panel was last clicked or focused. When the focus is in a text field, those keys keep their native text undo.
+- **Undo UI.** There are no global undo/redo buttons. A module that wants visible buttons adds the shared **History panel** (`HistoryPanel.svelte`, one instance per module, bound to that module's stack) to its page. It can also carry the module's settings: pass a `settings` component and a ⚙ button opens it in a pop-up, so small settings need no panel of their own. Keyboard shortcuts work everywhere: Cmd/Ctrl+Z and Shift+Cmd/Ctrl+Z (or Ctrl+Y) act on the module whose panel was last clicked or focused. When the focus is in a text field, those keys keep their native text undo.
 - **Coalescing.** Some UI actions issue many commands (a drag that edits several entries). Wrap them in a single `core.Batch { cmds }` or link them with a shared `group` id, so one undo reverts the whole action.
 - Commands that should never be undone (for example, purely informational ones) declare this in their definition.
 
@@ -423,10 +423,9 @@ A calendar of tracked **blocks**: time intervals with an optional title and any 
 | `timetrack.timeView` | Day/Week/Month toggle, ‹ › arrows, a clickable date label (opens a date picker popover for jumping to faraway dates), a **Today** button, the **Start/Stop tracking** button, and the calendar itself. |
 | `timetrack.stats` | Statistics for the exact range currently shown (that day, week or month). |
 | `timetrack.tags` | Tag management. |
-| `timetrack.history` | Undo/Redo buttons for the time tracker (shared History panel, §3.3). |
-| `timetrack.settings` | Day window start and end hours. |
+| `timetrack.history` | Undo/Redo buttons for the time tracker (shared History panel, §3.3), plus a ⚙ button that opens the **settings pop-up** (day window start and end hours). |
 
-All panels sit together on the Time tracking page: `split(h, [timetrack.timeView ×3, split(v, scroll, [timetrack.history, timetrack.stats, timetrack.tags, timetrack.settings], all fit) ×1])`. The time view takes three-quarters of the width. A side column stacks a small History panel (undo/redo), then statistics, tags and settings, each at its natural height; the column scrolls as a whole rather than squeezing them. Panels talk to each other only through module state. The selected view and date range are **UI state** in a store shared by the module's panels. They are not commands, because navigating is not an undoable change.
+All panels sit together on the Time tracking page: `split(h, [timetrack.timeView ×3, split(v, scroll, [timetrack.history, timetrack.stats, timetrack.tags], all fit) ×1])`. The time view takes three-quarters of the width. A side column stacks a small History panel (undo/redo and the settings button), then statistics and tags, each at its natural height; the column scrolls as a whole rather than squeezing them. Panels talk to each other only through module state. The selected view and date range are **UI state** in a store shared by the module's panels. They are not commands, because navigating is not an undoable change.
 
 #### Views
 
@@ -435,6 +434,7 @@ All panels sit together on the Time tracking page: `split(h, [timetrack.timeView
   - Mouse-drag on empty space creates a block. Drags snap to 5 minutes and show a live preview, including any truncation that will result (see *Overlap rule* below).
   - Clicking a block opens the block pop-up. Dragging its top or bottom edge changes its start or end time (see *Resizing blocks* below).
 - **Week:** the same timeline repeated as 7 day columns, Monday to Sunday, with the same drag, resize and click behaviour.
+- **Drags stay in their day column.** A block is never dragged from one day (column) to another. Within a column, a drag covers the whole day window, so it runs past midnight whenever the window does (the default 07:00–05:00 does).
 - **Month:** a calendar grid of logical days.
   - Each day shows its **total hours** and a **pie chart**. The pie's slices are the tags' shares of that day, and its size grows with the day's hours.
   - Size scaling: the pie's **area** is proportional to hours (radius ∝ √hours), on a fixed scale where 12 h fills the cell (clamped), so months can be compared. Days with nothing tracked show no pie.

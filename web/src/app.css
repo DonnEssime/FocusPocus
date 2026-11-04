@@ -241,8 +241,15 @@ button.link {
   gap: 0.5rem;
 }
 
-.history button {
+/* Direct children only: the settings pop-up is rendered inside this element. */
+.history > button {
   flex: 1;
+}
+
+.history > button.history-settings {
+  flex: none;
+  font-size: 1.1rem;
+  padding: 0.2rem 0.6rem;
 }
 
 .panel {

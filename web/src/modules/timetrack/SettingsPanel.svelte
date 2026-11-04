@@ -15,7 +15,8 @@
   }
 </script>
 
-<form class="settings" onsubmit={(e) => e.preventDefault()}>
+<!-- Not a form: it is shown inside the settings pop-up, which is one. -->
+<div class="settings">
   <label>
     <span><Msg key="timetrack.dayWindow.start" /></span>
     <select
@@ -42,4 +43,4 @@
       {params}
     />
   </p>
-</form>
+</div>

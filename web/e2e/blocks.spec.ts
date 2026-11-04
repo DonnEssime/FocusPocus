@@ -141,3 +141,44 @@ test('start tracking begins when pressed, survives a reload, shows in other wind
   await expect(running).toContainText('14:30–15:15');
   await expect(other.getByTestId('tt-track')).toHaveText('Start tracking');
 });
+
+test('a drag runs past midnight when the day window does, and stays in its own day', async ({ page }) => {
+  await openTracker(page, 'midnight');
+  await dayView(page);
+  await dragBetween(page, at(23), at(25.5)); // 23:00 → 01:30 the next morning
+  const dialog = page.getByTestId('tt-block-dialog');
+  await expect(dialog.getByTestId('tt-dialog-when')).toHaveText('23:00–01:30');
+  await dialog.getByTestId('tt-dialog-title').fill('Late');
+  await dialog.getByTestId('tt-dialog-save').click();
+  const late = page.getByTestId('tt-block').filter({ hasText: 'Late' });
+  await expect(late).toContainText('23:00–01:30');
+
+  // Resizing works across midnight too.
+  const handle = late.getByTestId('tt-handle-end');
+  const box = (await handle.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, (await yOf(page, at(26.5))).y, { steps: 5 });
+  await page.mouse.up();
+  await expect(late).toContainText('23:00–02:30');
+
+  // It all belongs to the 4 Nov logical day, which starts at 07:00.
+  await page.getByTestId('tt-view-month').click();
+  await expect(page.locator('[data-day="2026-11-04"]').getByTestId('tt-month-total')).toHaveText('3h 30m');
+  await expect(page.locator('[data-day="2026-11-05"]').getByTestId('tt-month-total')).toHaveCount(0);
+});
+
+test('with a window that ends before midnight, a drag stops at the window end', async ({ page }) => {
+  await openTracker(page, 'evening');
+  await page.getByTestId('module-settings').click();
+  await page.getByTestId('tt-day-end').selectOption('23');
+  await page.getByTestId('settings-close').click();
+  await dayView(page);
+  const box = (await page.locator('.tl-col').first().boundingBox())!;
+  const y = (h: number) => box.y + ((h - 7) / 16) * box.height; // 07:00–23:00
+  await page.mouse.move(box.x + box.width / 2, y(22));
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height + 80, { steps: 5 }); // far below
+  await page.mouse.up();
+  await expect(page.getByTestId('tt-dialog-when')).toHaveText('22:00–23:00');
+});

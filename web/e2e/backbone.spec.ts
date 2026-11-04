@@ -16,11 +16,29 @@ async function waitSaved(page: Page): Promise<void> {
   await expect(page.getByTestId('save-status')).toHaveText('All changes saved', { timeout: 15_000 });
 }
 
+/** Time tracking settings live in a pop-up behind the History panel's gear button. */
+async function openSettings(page: Page): Promise<void> {
+  await page.getByTestId('module-settings').click();
+  await expect(page.getByTestId('settings-dialog')).toBeVisible();
+}
+
+async function closeSettings(page: Page): Promise<void> {
+  await page.getByTestId('settings-close').click();
+  await expect(page.getByTestId('settings-dialog')).toBeHidden();
+}
+
+async function expectSummary(page: Page, text: string | RegExp): Promise<void> {
+  await openSettings(page);
+  await expect(page.getByTestId('day-window-summary')).toHaveText(text);
+  await closeSettings(page);
+}
+
 test('shows both modules as tabs with their panels', async ({ page }) => {
   await page.goto(vaultUrl('tabs'));
   await expect(page.getByRole('tab', { name: 'Time tracking' })).toBeVisible();
   await expect(page.getByTestId('tt-timeline')).toBeVisible();
-  await expect(page.getByTestId('day-window-summary')).toHaveText('Days are shown from 07:00 to 05:00 the next day.');
+  await expect(page.getByTestId('settings-dialog')).toBeHidden();
+  await expectSummary(page, 'Days are shown from 07:00 to 05:00 the next day.');
 
   await page.getByRole('tab', { name: 'Focus' }).click();
   await expect(page.getByTestId('focus-countdown')).toHaveText('25:00');
@@ -29,11 +47,25 @@ test('shows both modules as tabs with their panels', async ({ page }) => {
   await expect(page.locator('[data-panel$=".history"]')).toHaveCount(1);
 });
 
+test('settings close with Esc, and keyboard undo waits until they are closed', async ({ page }) => {
+  await page.goto(vaultUrl('settings'));
+  await openSettings(page);
+  await page.getByTestId('tt-day-start').selectOption('9');
+  await page.locator('[data-testid="settings-dialog"] .modal-title').click();
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(page.getByTestId('day-window-summary')).toContainText('from 09:00');
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('settings-dialog')).toBeHidden();
+  await expect(page.locator('.tl-hour').first()).toHaveText('09:00');
+});
+
 test('commands persist across reloads and undo/redo is per module', async ({ page }) => {
   const url = vaultUrl('persist');
   await page.goto(url);
+  await openSettings(page);
   await page.getByTestId('tt-day-start').selectOption('8');
   await expect(page.getByTestId('day-window-summary')).toContainText('from 08:00');
+  await closeSettings(page);
 
   await page.getByRole('tab', { name: 'Focus' }).click();
   await page.getByTestId('focus-duration').fill('50');
@@ -46,15 +78,15 @@ test('commands persist across reloads and undo/redo is per module', async ({ pag
   await shortcut(page, 'Timer', 'ControlOrMeta+Shift+z');
   await expect(page.getByTestId('focus-countdown')).toHaveText('50:00');
   await page.getByRole('tab', { name: 'Time tracking' }).click();
-  await expect(page.getByTestId('day-window-summary')).toContainText('from 08:00');
+  await expectSummary(page, /from 08:00/);
   await page.getByTestId('undo').click();
-  await expect(page.getByTestId('day-window-summary')).toContainText('from 07:00');
+  await expectSummary(page, /from 07:00/);
   await expect(page.getByTestId('undo')).toBeDisabled();
   await page.getByTestId('redo').click();
 
   await waitSaved(page);
   await page.reload();
-  await expect(page.getByTestId('day-window-summary')).toContainText('from 08:00');
+  await expectSummary(page, /from 08:00/);
   await page.getByRole('tab', { name: 'Focus' }).click();
   await expect(page.getByTestId('focus-countdown')).toHaveText('50:00');
   // Undo history survives the reload, because it is part of the log.
@@ -66,13 +98,15 @@ test('two windows on the same vault stay in sync', async ({ context }) => {
   const url = vaultUrl('windows');
   const a = await context.newPage();
   await a.goto(url);
-  await expect(a.getByTestId('day-window-summary')).toBeVisible();
+  await expect(a.getByTestId('tt-timeline')).toBeVisible();
   const b = await context.newPage();
   await b.goto(url);
-  await expect(b.getByTestId('day-window-summary')).toBeVisible();
+  await expect(b.getByTestId('tt-timeline')).toBeVisible();
 
+  await openSettings(a);
   await a.getByTestId('tt-day-end').selectOption('23');
-  await expect(b.getByTestId('day-window-summary')).toHaveText('Days are shown from 07:00 to 23:00.');
+  await closeSettings(a);
+  await expectSummary(b, 'Days are shown from 07:00 to 23:00.');
   await b.getByTestId('undo').click();
-  await expect(a.getByTestId('day-window-summary')).toHaveText('Days are shown from 07:00 to 05:00 the next day.');
+  await expectSummary(a, 'Days are shown from 07:00 to 05:00 the next day.');
 });

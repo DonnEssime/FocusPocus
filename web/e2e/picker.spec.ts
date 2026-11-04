@@ -25,7 +25,7 @@ async function stubPicker(page: Page, mode: 'empty' | 'nonEmpty' | 'cancel'): Pr
 
 test('picking an empty folder creates and opens a vault', async ({ page }) => {
   await stubPicker(page, 'empty');
-  await expect(page.getByTestId('day-window-summary')).toBeVisible();
+  await expect(page.getByTestId('tt-timeline')).toBeVisible();
   await expect(page.getByTestId('vault-name')).toContainText('picked-');
 });
 

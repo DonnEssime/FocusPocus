@@ -12,9 +12,9 @@ export const timetrackPanels: PanelDefinition[] = [
     module: 'timetrack',
     titleKey: 'shell.panel.history',
     component: HistoryPanel,
-    props: { module: 'timetrack' },
+    // Settings live in a pop-up behind the gear button of the History panel.
+    props: { module: 'timetrack', settings: SettingsPanel, settingsTitle: 'timetrack.panel.settings' },
   },
   { id: 'timetrack.stats', module: 'timetrack', titleKey: 'timetrack.panel.stats', component: StatsPanel },
   { id: 'timetrack.tags', module: 'timetrack', titleKey: 'timetrack.panel.tags', component: TagsPanel },
-  { id: 'timetrack.settings', module: 'timetrack', titleKey: 'timetrack.panel.settings', component: SettingsPanel },
 ];

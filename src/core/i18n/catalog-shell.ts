@@ -32,6 +32,8 @@ export const shellCatalog = {
     en: 'No folder was opened. If Chrome asked whether this site may edit files in the folder, choose “Edit files”.',
   },
   'shell.undo': { en: 'Undo' },
+  'shell.settings': { en: 'Settings' },
+  'shell.close': { en: 'Close' },
   'shell.redo': { en: 'Redo' },
   'shell.panel.history': { en: 'History' },
   'shell.unknownPanel': { en: 'Unknown panel “{id}”.' },
