@@ -61,7 +61,7 @@
     {/each}
   </div>
 {:else}
-  <div class="split" style:flex-direction={node.direction}>
+  <div class="split" class:scroll={node.scroll} style:flex-direction={node.direction}>
     {#each node.children as child, i (i)}
       <div class="split-cell" class:fit={child.fit} style:flex-grow={child.fit ? 0 : (child.weight ?? 1)}>
         <LayoutHost node={child.node} />

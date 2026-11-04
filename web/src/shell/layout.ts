@@ -10,7 +10,13 @@ import type { AppMessageKey } from '@focuspocus/registry';
 export type LayoutNode =
   | { kind: 'panel'; panel: string }
   | { kind: 'tabs'; tabs: Array<{ title?: AppMessageKey; node: LayoutNode }> }
-  | { kind: 'split'; direction: 'row' | 'column'; children: SplitChild[] };
+  | {
+      kind: 'split';
+      direction: 'row' | 'column';
+      children: SplitChild[];
+      /** Let the split scroll as a whole instead of squeezing its children (side columns of `fit` panels). */
+      scroll?: boolean;
+    };
 
 /** `weight` shares the free space; `fit` sizes the child to its content instead (small panels). */
 export interface SplitChild {
@@ -36,9 +42,11 @@ export const DEFAULT_LAYOUT: LayoutNode = {
             node: {
               kind: 'split',
               direction: 'column',
+              scroll: true,
               children: [
                 { node: panel('timetrack.history'), fit: true },
-                { node: panel('timetrack.tags') },
+                { node: panel('timetrack.stats'), fit: true },
+                { node: panel('timetrack.tags'), fit: true },
                 { node: panel('timetrack.settings'), fit: true },
               ],
             },

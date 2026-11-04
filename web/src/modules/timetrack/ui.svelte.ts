@@ -36,6 +36,8 @@ export class TimetrackUi {
   now = $state(Date.now());
   /** The open block pop-up, if any. */
   dialog = $state<BlockDialogMode | null>(null);
+  /** A block resized to zero length, waiting for "Delete this block?". */
+  confirmDelete = $state<Block | null>(null);
 
   constructor(private readonly store: SessionStore) {
     this.anchor = this.today;

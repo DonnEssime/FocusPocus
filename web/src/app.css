@@ -232,6 +232,10 @@ button.link {
   flex: 0 0 auto;
 }
 
+.split.scroll {
+  overflow-y: auto;
+}
+
 .history {
   display: flex;
   gap: 0.5rem;
@@ -878,4 +882,94 @@ button.danger-button {
   width: 0.75rem;
   height: 0.75rem;
   border-radius: 50%;
+}
+
+.tl-handle {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 6px;
+  cursor: ns-resize;
+}
+
+.tl-handle.top {
+  top: 0;
+}
+
+.tl-handle.bottom {
+  bottom: 0;
+}
+
+.tl-block.resizing {
+  outline: 2px solid var(--text);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.tl-block.empty {
+  min-height: 3px;
+  outline-color: var(--danger);
+}
+
+/* ---- time tracker: statistics ---- */
+.stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.stats-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.stats-total-value {
+  font-size: 1.4rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-pie {
+  display: flex;
+  justify-content: center;
+}
+
+.stats-pie .pie {
+  width: 9rem;
+  height: 9rem;
+  max-height: none;
+}
+
+.stats-legend {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stats-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stats-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-hours,
+.stats-share {
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-share {
+  width: 2.5rem;
+  text-align: right;
 }

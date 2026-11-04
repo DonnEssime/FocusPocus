@@ -5,6 +5,7 @@
   import Msg from '../../i18n/Msg.svelte';
   import { msgText } from '../../i18n/msg';
   import { getSessionStore, getShell } from '../../shell/context';
+  import Modal from '../../shell/ui/Modal.svelte';
   import Popover from '../../shell/ui/Popover.svelte';
   import BlockDialog from './BlockDialog.svelte';
   import DatePicker from './DatePicker.svelte';
@@ -81,4 +82,23 @@
   {#if ui.dialog}
     <BlockDialog mode={ui.dialog} {tt} zone={ui.zone} onclose={() => (ui.dialog = null)} />
   {/if}
+  <Modal
+    open={ui.confirmDelete !== null}
+    titleKey="timetrack.confirmDelete.title"
+    oncancel={() => (ui.confirmDelete = null)}
+    onsubmit={() => {
+      const block = ui.confirmDelete;
+      ui.confirmDelete = null;
+      if (block) shell.run(timetrackActions.deleteBlock(block.id));
+    }}
+    testid="tt-confirm-delete"
+  >
+    <p class="muted">
+      <Msg key={ui.confirmDelete?.endMs === null ? 'timetrack.confirmDelete.running' : 'timetrack.confirmDelete.body'} />
+    </p>
+    {#snippet actions()}
+      <button type="button" data-testid="tt-confirm-cancel" onclick={() => (ui.confirmDelete = null)}><Msg key="timetrack.dialog.cancel" /></button>
+      <button type="submit" class="danger-button" data-testid="tt-confirm-delete-button"><Msg key="timetrack.dialog.delete" /></button>
+    {/snippet}
+  </Modal>
 </div>

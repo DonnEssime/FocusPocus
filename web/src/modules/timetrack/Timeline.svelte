@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { blockTags, timetrackModule, type Block, type TimetrackState } from '@focuspocus/modules/timetrack';
-  import { blocksInRange, effectiveEnd } from '@focuspocus/modules/timetrack/blocks';
+  import { blockTags, timetrackActions, timetrackModule, type Block, type TimetrackState } from '@focuspocus/modules/timetrack';
+  import { blocksInRange, effectiveEnd, neighbours } from '@focuspocus/modules/timetrack/blocks';
   import { hourMarks, windowRange, type DayKey, type Range } from '@focuspocus/modules/timetrack/time';
   import { getLocale } from '../../i18n/locale.svelte';
   import { getShell } from '../../shell/context';
@@ -11,7 +11,8 @@
 
   /**
    * Day columns (one for Day view, seven for Week view) over the visible day window. Dragging on
-   * empty space creates a block (preview first, pop-up on release); clicking a block edits it.
+   * empty space creates a block (preview first, pop-up on release); clicking a block edits it;
+   * dragging a block's top or bottom edge resizes it, clamped by its neighbours (§10.2).
    */
   let { ui, tt }: { ui: TimetrackUi; tt: TimetrackState } = $props();
   const shell = getShell();
@@ -32,6 +33,23 @@
     moved: boolean;
   }
   let drag = $state<Drag | null>(null);
+
+  interface Resize {
+    block: Block;
+    edge: 'start' | 'end';
+    range: Range;
+    el: HTMLElement;
+    pointerId: number;
+    startY: number;
+    originalMs: number;
+    currentMs: number;
+    min: number;
+    max: number;
+    moved: boolean;
+  }
+  let resize = $state<Resize | null>(null);
+  /** Set when a resize ends, so the click that follows the pointerup does not open the pop-up. */
+  let swallowClick = false;
 
   const snap = (ms: number, range: Range) => Math.min(range.to, Math.max(range.from, Math.round(ms / SNAP_MS) * SNAP_MS));
 
@@ -68,6 +86,12 @@
 
   const shown = $derived(preview?.state ?? tt);
 
+  /** During a resize only the preview moves: the block with its dragged edge replaced. */
+  function resized(b: Block): Block {
+    if (!resize || resize.block.id !== b.id) return b;
+    return resize.edge === 'start' ? { ...b, startMs: resize.currentMs } : { ...b, endMs: resize.currentMs };
+  }
+
   interface Placed {
     block: Block;
     top: number;
@@ -100,7 +124,7 @@
     ui.timelineDays.map((day) => {
       const range = windowRange(day, ui.zone, shown.dayWindow);
       const span = range.to - range.from;
-      const blocks = blocksInRange(shown.blocks, range.from, range.to, ui.now);
+      const blocks = blocksInRange(shown.blocks, range.from, range.to, ui.now).map((b) => resized(b));
       const placed = blocks.map((_, i) => place(blocks, i, range));
       const marks = hourMarks(day, ui.zone, shown.dayWindow).map((m) => ({ ...m, top: ((m.ms - range.from) / span) * 100 }));
       const nowTop = ui.now >= range.from && ui.now < range.to ? ((ui.now - range.from) / span) * 100 : null;
@@ -128,12 +152,14 @@
   }
 
   function onPointerMove(e: PointerEvent): void {
+    if (onResizeMove(e)) return;
     if (!drag || e.pointerId !== drag.pointerId) return;
     drag.currentMs = msAt(drag.el, drag.range, e.clientY);
     if (Math.abs(e.clientY - drag.startY) >= CLICK_SLOP_PX) drag.moved = true;
   }
 
   function onPointerUp(e: PointerEvent): void {
+    if (onResizeUp(e)) return;
     if (!drag || e.pointerId !== drag.pointerId) return;
     const span = pending;
     const covered = preview !== null && preview.state === null;
@@ -146,10 +172,53 @@
   }
 
   function onKeydown(e: KeyboardEvent): void {
-    if (e.key === 'Escape' && drag) {
+    if (e.key === 'Escape' && (drag || resize)) {
       e.preventDefault();
       drag = null;
+      resize = null;
     }
+  }
+
+  function startResize(e: PointerEvent, block: Block, edge: 'start' | 'end', range: Range): void {
+    if (e.button !== 0 || ui.dialog) return;
+    e.stopPropagation();
+    const el = (e.currentTarget as HTMLElement).closest('.tl-col') as HTMLElement;
+    el.setPointerCapture(e.pointerId);
+    ui.refresh();
+    const { prev, next } = neighbours(tt.blocks, block);
+    const end = effectiveEnd(block, ui.now);
+    // Never past a neighbour, never past the other edge (zero length at most), never off the window.
+    const [min, max] =
+      edge === 'start'
+        ? [Math.max(range.from, prev ? effectiveEnd(prev, ui.now) : -Infinity), Math.min(end, block.endMs === null ? ui.now : Infinity)]
+        : [block.startMs, Math.min(range.to, next ? next.startMs : Infinity)];
+    const originalMs = edge === 'start' ? block.startMs : end;
+    resize = { block, edge, range, el, pointerId: e.pointerId, startY: e.clientY, originalMs, currentMs: originalMs, min, max, moved: false };
+  }
+
+  function onResizeMove(e: PointerEvent): boolean {
+    if (!resize || e.pointerId !== resize.pointerId) return false;
+    if (Math.abs(e.clientY - resize.startY) >= CLICK_SLOP_PX) resize.moved = true;
+    if (resize.moved) resize.currentMs = Math.min(resize.max, Math.max(resize.min, msAt(resize.el, resize.range, e.clientY)));
+    return true;
+  }
+
+  function onResizeUp(e: PointerEvent): boolean {
+    if (!resize || e.pointerId !== resize.pointerId) return false;
+    const r = resize;
+    resize = null;
+    if (!r.moved) {
+      // A press on an edge without moving is a click: open the pop-up like anywhere on the block.
+      ui.dialog = { kind: 'edit', block: r.block };
+    } else if (r.currentMs !== r.originalMs) {
+      const start = r.edge === 'start' ? r.currentMs : r.block.startMs;
+      const end = r.edge === 'end' ? r.currentMs : effectiveEnd(r.block, ui.now);
+      if (end <= start) ui.confirmDelete = r.block;
+      else shell.run(timetrackActions.editBlock({ blockId: r.block.id, [r.edge === 'start' ? 'startMs' : 'endMs']: r.currentMs }));
+    }
+    swallowClick = true;
+    setTimeout(() => (swallowClick = false));
+    return true;
   }
 </script>
 
@@ -185,17 +254,23 @@
         onpointerdown={(e) => onPointerDown(e, col.day, col.range)}
         onpointermove={onPointerMove}
         onpointerup={onPointerUp}
-        onpointercancel={() => (drag = null)}
+        onpointercancel={() => {
+          drag = null;
+          resize = null;
+        }}
       >
         {#each col.marks as m, i (i)}<div class="tl-line" style:top="{m.top}%"></div>{/each}
         {#each col.placed as p (p.block.id)}
           {@const tags = blockTags(shown, p.block)}
           {@const isPreview = p.block.id === PREVIEW_ID}
+          {@const isResizing = resize?.block.id === p.block.id}
           <button
             type="button"
             class="tl-block"
             class:running={p.running}
             class:preview={isPreview}
+            class:resizing={isResizing}
+            class:empty={isResizing && p.height === 0}
             data-testid={isPreview ? 'tt-preview' : 'tt-block'}
             data-block-id={p.block.id}
             style:top="{p.top}%"
@@ -204,7 +279,7 @@
             style:color={blockInk(tags)}
             title={`${p.block.title || defaultTitle} · ${formatTime(p.from, ui.zone, locale)}–${formatTime(p.to, ui.zone, locale)}`}
             onclick={() => {
-              if (isPreview || ui.dialog) return;
+              if (isPreview || ui.dialog || swallowClick) return;
               ui.refresh();
               ui.dialog = { kind: 'edit', block: p.block };
             }}
@@ -214,6 +289,25 @@
               {formatTime(p.from, ui.zone, locale)}–{p.running ? msgText('timetrack.block.now') : formatTime(p.to, ui.zone, locale)}
             </span>
             {#if tags.length}<span class="tl-block-tags">{tags.map((t) => t.name).join(', ')}</span>{/if}
+            {#if !isPreview}
+              <!-- Edges clipped by the day window have no handle; a running block has no end to drag. -->
+              {#if p.block.startMs >= col.range.from}
+                <span
+                  class="tl-handle top"
+                  data-testid="tt-handle-start"
+                  role="presentation"
+                  onpointerdown={(e) => startResize(e, p.block, 'start', col.range)}
+                ></span>
+              {/if}
+              {#if !p.running && p.to <= col.range.to}
+                <span
+                  class="tl-handle bottom"
+                  data-testid="tt-handle-end"
+                  role="presentation"
+                  onpointerdown={(e) => startResize(e, p.block, 'end', col.range)}
+                ></span>
+              {/if}
+            {/if}
           </button>
         {/each}
         {#if col.invalid}

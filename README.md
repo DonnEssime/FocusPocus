@@ -426,7 +426,7 @@ A calendar of tracked **blocks**: time intervals with an optional title and any 
 | `timetrack.history` | Undo/Redo buttons for the time tracker (shared History panel, §3.3). |
 | `timetrack.settings` | Day window start and end hours. |
 
-All panels sit together on the Time tracking page: `split(h, [timetrack.timeView ×3, split(v, [timetrack.history (fit), timetrack.stats, timetrack.tags, timetrack.settings]) ×1])`. The time view takes three-quarters of the width. A side column stacks a small History panel (undo/redo), then statistics, tags and settings. Panels talk to each other only through module state. The selected view and date range are **UI state** in a store shared by the module's panels. They are not commands, because navigating is not an undoable change.
+All panels sit together on the Time tracking page: `split(h, [timetrack.timeView ×3, split(v, scroll, [timetrack.history, timetrack.stats, timetrack.tags, timetrack.settings], all fit) ×1])`. The time view takes three-quarters of the width. A side column stacks a small History panel (undo/redo), then statistics, tags and settings, each at its natural height; the column scrolls as a whole rather than squeezing them. Panels talk to each other only through module state. The selected view and date range are **UI state** in a store shared by the module's panels. They are not commands, because navigating is not an undoable change.
 
 #### Views
 
@@ -583,12 +583,12 @@ These are deliberately left out: editing several blocks at once, copy/paste, sea
 - [x] Placeholder panels for the time tracker, wired to its spec'd `tt.SetDayWindow` settings command
 - [x] `focus` module (§10.1): commands, timer and settings panels, sound registry, audio engine, generated sound assets plus licences
 - [x] `timetrack` settings panel: day window hours (`tt.SetDayWindow`)
-- [ ] `timetrack` (§10.2), in the order of *Implementation order*:
+- [x] `timetrack` (§10.2), in the order of *Implementation order*:
   - [x] 1. Domain core: `time.ts` helper (logical days, DST, Monday weeks), block and tag commands, overlap truncation, running-block rules, determinism fuzz
   - [x] 2. Selectors and aggregates: range index, per-day totals per tag, benchmark, **first frozen fixture vault** (`tests/fixtures/vault-v1`)
   - [x] 3. Shell `Modal` and `Popover` primitives (native `<dialog>` and Popover API)
   - [x] 4. Read-only time view: navigation store, toolbar and date picker, day/week timelines, month grid with pies
   - [x] 5. Tags panel: list, add/rename/describe/delete, Dark2 defaults, colour wheel
   - [x] 6. Block pop-up, drag-to-create, click-to-edit, Start/Stop tracking
-  - [ ] 7. Block resizing (edge handles, clamping, zero-length delete), statistics panel, final page layout
+  - [x] 7. Block resizing (edge handles, clamping, zero-length delete), statistics panel, final page layout
 - Later: theme and language selection (`app.SetTheme`, `app.SetLanguage`), user-arranged layouts
