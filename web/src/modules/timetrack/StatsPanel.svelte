@@ -8,6 +8,7 @@
   import { tagColor } from './colors';
   import { formatDuration } from './format';
   import Pie from './Pie.svelte';
+  import TargetStats from './TargetStats.svelte';
   import { timetrackUiFor } from './ui.svelte';
 
   /** Statistics for exactly the range the time view shows (that day, week or month). */
@@ -31,6 +32,7 @@
 </script>
 
 <div class="stats" data-testid="tt-stats">
+  {#if tt.targets.enabled}<TargetStats {ui} {tt} />{/if}
   <div class="stats-total">
     <span class="muted small"><Msg key={`timetrack.stats.total.${ui.view}`} /></span>
     <span class="stats-total-value" data-testid="tt-stats-total">{formatDuration(totals.totalMs)}</span>

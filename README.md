@@ -501,7 +501,7 @@ All panels sit together on the Time tracking page: `split(h, [timetrack.timeView
 - **Counting:** a block with *n* tags adds 1/*n* of its duration to each of those tags, so the slices always add up to the total.
 - Month-view pies per day use the same rule. Draw pies as plain SVG; no chart library is needed.
 
-#### Target hours (requested, not implemented yet)
+#### Target hours
 
 Each logical day can have a **target**: how long you intend to work that day. The app then shows a **balance**, tracked time minus target, per day, for the shown range, and over a configurable interval.
 
@@ -659,9 +659,9 @@ These are deliberately left out: editing several blocks at once, copy/paste, sea
   - [x] 5. Tags panel: list, add/rename/describe/delete, Dark2 defaults, colour wheel
   - [x] 6. Block pop-up, drag-to-create, click-to-edit, Start/Stop tracking
   - [x] 7. Block resizing (edge handles, clamping, zero-length delete), statistics panel, final page layout
-- [ ] `timetrack` target hours (§10.2 *Target hours*, requested):
+- [x] `timetrack` target hours (§10.2 *Target hours*):
   - [x] 8. Domain: target settings (effective-dated full time), day targets, balance interval; fast target-sum and tracked-sum queries plus benchmark; second fixture vault
-  - [ ] 9. Settings pop-up: enable checkbox, full-time hours with the "going forward / retroactively" question
-  - [ ] 10. Day view target chip, week-header balances, target popover (0/50/100 %, `hh:mm` / `%` entry)
-  - [ ] 11. Statistics: shown-range balance, interval balance with start/end (or now) editor
+  - [x] 9. Settings pop-up: enable checkbox, full-time hours with the "going forward / retroactively" question
+  - [x] 10. Day view target chip, week-header balances, target popover (0/50/100 %, `hh:mm` / `%` entry)
+  - [x] 11. Statistics: shown-range balance, interval balance with start/end (or now) editor
 - Later: theme and language selection (`app.SetTheme`, `app.SetLanguage`), user-arranged layouts

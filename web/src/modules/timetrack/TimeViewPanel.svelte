@@ -9,6 +9,10 @@
   import Popover from '../../shell/ui/Popover.svelte';
   import BlockDialog from './BlockDialog.svelte';
   import DatePicker from './DatePicker.svelte';
+  import TargetPopover from './TargetPopover.svelte';
+  import { dayTargetView } from './targetView';
+  import { formatBalance, formatClock } from '@focuspocus/modules/timetrack/targets';
+  import type { DayKey } from '@focuspocus/modules/timetrack/time';
   import { formatDay, formatDayRange } from './format';
   import MonthGrid from './MonthGrid.svelte';
   import Timeline from './Timeline.svelte';
@@ -32,6 +36,17 @@
   }
   const VIEWS: ViewKind[] = ['day', 'week', 'month'];
   let picker: Popover;
+
+  // Target hours (hidden entirely while switched off).
+  const targetsOn = $derived(tt.targets.enabled);
+  const dayView = $derived(targetsOn && ui.view === 'day' ? dayTargetView(tt, ui.anchor, ui) : null);
+  let targetPopover: Popover;
+  let targetDay = $state<DayKey | null>(null);
+
+  function editTarget(day: DayKey, anchor: HTMLElement): void {
+    targetDay = day;
+    targetPopover.show(anchor);
+  }
 
   const label = $derived.by(() => {
     const locale = getLocale();
@@ -57,6 +72,25 @@
     <button type="button" class="icon" data-testid="tt-next" aria-label={msgText('timetrack.nav.next')} onclick={() => ui.step(1)}>›</button>
     <button type="button" class="tt-date-label" data-testid="tt-date-label" popovertarget="tt-date-popover">{label}</button>
     <button type="button" data-testid="tt-today" onclick={() => ui.goToday()}><Msg key="timetrack.nav.today" /></button>
+    {#if dayView}
+      <button
+        type="button"
+        class="target-chip"
+        class:over={dayView.balanceMs > 0}
+        class:under={dayView.balanceMs < 0}
+        data-testid="tt-target-chip"
+        onclick={(e) => editTarget(dayView.day, e.currentTarget)}
+      >
+        {#if dayView.future}
+          <Msg key="timetrack.targets.chipFuture" params={{ target: formatClock(dayView.targetMs) }} />
+        {:else}
+          <Msg
+            key="timetrack.targets.chip"
+            params={{ target: formatClock(dayView.targetMs), tracked: formatClock(dayView.trackedMs), balance: formatBalance(dayView.balanceMs) }}
+          />
+        {/if}
+      </button>
+    {/if}
     <span class="spacer"></span>
     {#if running}
       <button type="button" class="tracking" data-testid="tt-track" onclick={stopTracking}><Msg key="timetrack.track.stop" /></button>
@@ -77,8 +111,11 @@
   {#if ui.view === 'month'}
     <MonthGrid {ui} {tt} />
   {:else}
-    <Timeline {ui} {tt} />
+    <Timeline {ui} {tt} ontarget={targetsOn && ui.view === 'week' ? editTarget : undefined} />
   {/if}
+  <Popover id="tt-target-popover" bind:this={targetPopover} onclose={() => (targetDay = null)}>
+    {#if targetDay}<TargetPopover day={targetDay} {tt} ondone={() => targetPopover.hide()} />{/if}
+  </Popover>
   {#if ui.dialog}
     <BlockDialog mode={ui.dialog} {tt} zone={ui.zone} onclose={() => (ui.dialog = null)} />
   {/if}

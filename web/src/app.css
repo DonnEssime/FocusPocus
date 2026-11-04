@@ -458,8 +458,15 @@ button.icon {
   flex: none;
 }
 
-.tl-dayhead {
+.tl-dayhead-cell {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.tl-dayhead {
   min-width: 0;
   border: none;
   background: none;
@@ -979,4 +986,120 @@ button.danger-button {
 .stats-share {
   width: 2.5rem;
   text-align: right;
+}
+
+.settings label.checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.clock-input {
+  width: 6rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.choice-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.target-chip {
+  font-variant-numeric: tabular-nums;
+}
+
+.target-chip.over,
+.tl-daytarget.over {
+  color: var(--success);
+}
+
+.target-chip.under,
+.tl-daytarget.under {
+  color: var(--warning);
+}
+
+.tl-daytarget {
+  border: none;
+  background: none;
+  padding: 0 0 0.2rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.target-popover {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 15rem;
+}
+
+.target-popover-title {
+  font-weight: 600;
+}
+
+.target-shortcuts {
+  display: flex;
+}
+
+.target-shortcuts button {
+  flex: 1;
+}
+
+input.invalid {
+  border-color: var(--danger);
+}
+
+.target-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.stats-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.stats-row > :first-child {
+  flex: 1;
+}
+
+.balance {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.balance.big {
+  font-size: 1.4rem;
+}
+
+.balance.over {
+  color: var(--success);
+}
+
+.balance.under {
+  color: var(--warning);
+}
+
+.interval {
+  display: flex;
+  gap: 0.4rem;
+  align-items: baseline;
+}
+
+.interval-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }

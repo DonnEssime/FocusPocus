@@ -6,6 +6,8 @@
   import { getShell } from '../../shell/context';
   import { msgText } from '../../i18n/msg';
   import { blockBackground, blockInk } from './colors';
+  import { formatBalance, formatClock } from '@focuspocus/modules/timetrack/targets';
+  import { dayTargetView } from './targetView';
   import { formatDay, formatHour, formatTime } from './format';
   import type { TimetrackUi } from './ui.svelte';
 
@@ -14,7 +16,16 @@
    * empty space creates a block (preview first, pop-up on release); clicking a block edits it;
    * dragging a block's top or bottom edge resizes it, clamped by its neighbours (§10.2).
    */
-  let { ui, tt }: { ui: TimetrackUi; tt: TimetrackState } = $props();
+  let {
+    ui,
+    tt,
+    ontarget,
+  }: {
+    ui: TimetrackUi;
+    tt: TimetrackState;
+    /** When given (targets on, Week view), each day header shows its balance and opens the target popover. */
+    ontarget?: (day: DayKey, anchor: HTMLElement) => void;
+  } = $props();
   const shell = getShell();
 
   const SNAP_MS = 5 * 60_000;
@@ -228,15 +239,32 @@
   <div class="tl-head">
     <div class="tl-gutter"></div>
     {#each columns as col (col.day)}
-      <button
-        type="button"
-        class="tl-dayhead"
-        class:today={col.day === ui.today}
-        data-testid="tt-dayhead"
-        onclick={() => ui.openDay(col.day)}
-      >
-        {formatDay(col.day, locale, { weekday: 'short', day: 'numeric', month: columns.length === 1 ? 'long' : undefined })}
-      </button>
+      <div class="tl-dayhead-cell">
+        <button
+          type="button"
+          class="tl-dayhead"
+          class:today={col.day === ui.today}
+          data-testid="tt-dayhead"
+          onclick={() => ui.openDay(col.day)}
+        >
+          {formatDay(col.day, locale, { weekday: 'short', day: 'numeric', month: columns.length === 1 ? 'long' : undefined })}
+        </button>
+        {#if ontarget}
+          {@const v = dayTargetView(tt, col.day, ui)}
+          <button
+            type="button"
+            class="tl-daytarget"
+            class:over={v.counts && v.balanceMs > 0}
+            class:under={v.counts && v.balanceMs < 0}
+            data-testid="tt-day-balance"
+            data-day={col.day}
+            title={msgText('timetrack.targets.setTarget')}
+            onclick={(e) => ontarget(col.day, e.currentTarget)}
+          >
+            {#if v.future}{v.targetMs ? formatClock(v.targetMs) : '–'}{:else if v.counts}{formatBalance(v.balanceMs)}{:else}–{/if}
+          </button>
+        {/if}
+      </div>
     {/each}
   </div>
   <div class="tl-body">

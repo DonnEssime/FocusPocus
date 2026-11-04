@@ -48,17 +48,25 @@
     if (e.target === dialog) oncancel();
   }}
 >
+  {#snippet content()}
+    <h2 class="modal-title"><Msg key={titleKey} /></h2>
+    <div class="modal-body">{@render children()}</div>
+    {#if actions}<div class="modal-actions">{@render actions()}</div>{/if}
+  {/snippet}
   {#if open}
-    <form
-      class="modal-form"
-      onsubmit={(e) => {
-        e.preventDefault();
-        onsubmit?.();
-      }}
-    >
-      <h2 class="modal-title"><Msg key={titleKey} /></h2>
-      <div class="modal-body">{@render children()}</div>
-      {#if actions}<div class="modal-actions">{@render actions()}</div>{/if}
-    </form>
+    <!-- Only a modal with a submit action is a form, so a choice modal can open inside another one. -->
+    {#if onsubmit}
+      <form
+        class="modal-form"
+        onsubmit={(e) => {
+          e.preventDefault();
+          onsubmit();
+        }}
+      >
+        {@render content()}
+      </form>
+    {:else}
+      <div class="modal-form">{@render content()}</div>
+    {/if}
   {/if}
 </dialog>
