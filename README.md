@@ -501,6 +501,76 @@ All panels sit together on the Time tracking page: `split(h, [timetrack.timeView
 - **Counting:** a block with *n* tags adds 1/*n* of its duration to each of those tags, so the slices always add up to the total.
 - Month-view pies per day use the same rule. Draw pies as plain SVG; no chart library is needed.
 
+#### Target hours (requested, not implemented yet)
+
+Each logical day can have a **target**: how long you intend to work that day. The app then shows a **balance**, tracked time minus target, per day, for the shown range, and over a configurable long interval. Recommendations that still need the user's confirmation are marked **(open)**.
+
+##### Settings (in the settings pop-up)
+
+- **Track targets** (checkbox, default off). Turning it off only **hides** the target UI (day-view chip, statistics section, settings below). All target data stays in the vault, so turning it on again restores everything as it was. Target commands stay valid while it is off; the UI just doesn't issue them.
+- **Full-time hours per day**, default `8:00`. Percentage targets are relative to this.
+- **Default target per weekday (open):** a percentage of full time for each weekday, default Mon–Fri 100 % and Sat–Sun 0 %. A day without its own target uses its weekday default. Without such defaults every workday would need a click; setting all seven to 0 % gives the "unset means no target" model.
+
+##### A day's target
+
+- **Storage:** a target is attached to a **calendar date** (`DayKey`), not to instants. So it is time-zone transparent, like logical days: "4 Nov" stays 4 Nov wherever you are. Stored as one of:
+  - `{ percent }`: a share of the full-time hours in force on that date. It follows changes to the full-time setting (see below).
+  - `{ ms }`: an absolute duration, entered as `hh:mm`. It never changes when settings change.
+  - nothing: the weekday default applies (open; otherwise 0).
+- **Setting it** (Day view, when targets are on): a target chip next to the date label, for example "Target 8:00 · 6:15 tracked · −1:45". Clicking it opens a popover with:
+  - shortcut buttons **0 %**, **50 %** and **100 %**;
+  - a free entry field accepting `hh:mm` (`6:30`, `06:30`) or a percentage (`75%`, `62.5 %`). Valid ranges are 0:00–24:00 and 0–300 %. Anything else is refused inline. Enter saves and Esc cancels;
+  - **Use default**, which clears the day's own target (only shown when weekday defaults exist).
+- **Week view (open):** each day column header shows a compact balance for that day, and clicking it opens the same popover.
+- Every change is one undoable command.
+
+##### Changing the full-time hours
+
+Changing the full-time hours asks **which days the new value applies to**. Days with an `hh:mm` target are never affected; this question only concerns percentage targets and weekday defaults:
+
+- **From today on** (recommended default): past days keep the full-time hours they had, so past balances don't change retroactively.
+- **All days**, past and future.
+
+To make "from today on" possible without rewriting every past day, the full-time setting is **effective-dated**: a short list of `{ from: DayKey, ms }` entries, where the latest entry not after a day applies to it. "All days" replaces the list with one entry; "from today on" drops entries from today onwards and adds one for today. The same scheme applies to the weekday defaults if those are accepted.
+
+##### Which days count, and the balance formula
+
+- **Day inclusion:** a day counts if it has a target above 0, or if it has tracked time (it then counts with target 0). Days are either fully included or fully ignored; a block that crosses a logical-day boundary is already split by day (§10.2 *Time model*).
+- **Consequence for the arithmetic:** every day contributes exactly `tracked − target`. A day with neither tracked time nor a target contributes 0 whether or not it is "included". So the balance over any set of days is simply
+
+  > **balance = (tracked time over those days) − (sum of their targets)**
+
+  and no per-day scan is needed. The inclusion rule still matters for what is *shown* ("12 days counted", averages), not for the number itself.
+- **Future days never count (open, recommended).** Otherwise a week view on Monday morning would show −40:00. Days after today are excluded from both aggregations. **Today counts in full**, so its open target shows as a negative balance ("1:45 to go"), which is the useful reading during the day.
+
+##### Statistics (when targets are on)
+
+- **Shown range** (the current day, week or month): target sum, tracked time and balance over the included days up to today.
+- **Overall balance** over a configurable **interval**: a start date, and an end date or **now** (through today).
+  - The interval is vault state (`tt.SetBalanceInterval`), so it syncs and is undoable, because the user expects to set it often.
+  - It is edited in the statistics panel with the date picker popover.
+- **Zeroing out (open, recommended: adjustments):** a **Zero out** button records a **balance adjustment** `{ day: today, ms: −currentBalance, note }` instead of moving the interval start. The balance then reads 0 now. The interval and all tracking stay untouched, and later edits to earlier days still show up as a non-zero balance (honest, not hidden). Adjustments inside the interval count towards the overall balance and are listed under it, each deletable (undoable). The same mechanism covers manual corrections, for example overtime paid out. The alternative is to set the interval start to today. That is simpler, but it hides history that the interval was meant to show.
+
+##### Commands
+
+| Command | Payload | Notes |
+| --- | --- | --- |
+| `tt.SetTargetSettings` | `{ enabled?, fulltimeMs?, applyFrom? }` | `applyFrom: DayKey` = from that day on, `null` = all days; see *Changing the full-time hours* |
+| `tt.SetWeekdayTargets` (open) | `{ percents: number[7], applyFrom? }` | Monday first |
+| `tt.SetDayTarget` | `{ day, target: { percent } \| { ms } \| null }` | `null` = back to the default |
+| `tt.SetBalanceInterval` | `{ from: DayKey, to: DayKey \| null }` | `to: null` = now |
+| `tt.AddBalanceAdjustment` | `{ day, ms, note }` | id = command id; Zero out fills `ms` |
+| `tt.DeleteBalanceAdjustment` | `{ adjustmentId }` | `deps: [adjustmentId]` |
+
+All of these are undoable. They add new command types; the frozen `tt.*` payloads above don't change. Add a second fixture vault containing them when they are implemented.
+
+##### Aggregating over long periods
+
+- **Target sum** over `[from, to]` is computed arithmetically, never by visiting every day: for each effective-dated full-time segment, count the weekdays in the overlap, times the weekday defaults; then correct for the day overrides inside the range. Overrides are kept sorted by `DayKey`, so a range of them is found by binary search. Cost: O(segments + overrides in range).
+- **Tracked time** over a long interval uses per-bucket totals cached by bucket identity (a `WeakMap` keyed by the immutable bucket arrays of the block index). Buckets fully inside the range add their cached total; only the edge buckets are scanned. Copy-on-write invalidates exactly the buckets a command touched. Cost: O(buckets), about 300 for 10 years, instead of O(blocks).
+- **Benchmark target:** an overall balance over 10 years in under 5 ms.
+- **What does and doesn't shift the balance:** changing the day start hour only moves time across day boundaries at the edges of the interval. Time zones never change targets, because targets are calendar dates.
+
 #### Commands
 
 | Command | Payload | Notes |
@@ -591,4 +661,9 @@ These are deliberately left out: editing several blocks at once, copy/paste, sea
   - [x] 5. Tags panel: list, add/rename/describe/delete, Dark2 defaults, colour wheel
   - [x] 6. Block pop-up, drag-to-create, click-to-edit, Start/Stop tracking
   - [x] 7. Block resizing (edge handles, clamping, zero-length delete), statistics panel, final page layout
+- [ ] `timetrack` target hours (§10.2 *Target hours*, requested; resolve the **(open)** points first):
+  - [ ] 8. Domain: target settings (effective-dated full time), day targets, balance interval and adjustments; fast target-sum and tracked-sum queries plus benchmark; second fixture vault
+  - [ ] 9. Settings pop-up: enable checkbox, full-time hours with the "from today / all days" question, weekday defaults
+  - [ ] 10. Day view target chip and popover (0/50/100 %, `hh:mm` / `%` entry), compact week-header balances
+  - [ ] 11. Statistics: shown-range balance, overall balance with interval editor, Zero out and adjustment list
 - Later: theme and language selection (`app.SetTheme`, `app.SetLanguage`), user-arranged layouts
