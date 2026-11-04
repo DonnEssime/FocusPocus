@@ -8,7 +8,7 @@
   import Pie, { type PieSlice } from './Pie.svelte';
   import type { TimetrackUi } from './ui.svelte';
 
-  let { ui, state }: { ui: TimetrackUi; state: TimetrackState } = $props();
+  let { ui, tt }: { ui: TimetrackUi; tt: TimetrackState } = $props();
 
   /** Pie area grows with hours; 12 h fills the cell, so months can be compared at a glance. */
   const FULL_HOURS = 12;
@@ -16,7 +16,7 @@
 
   const month = $derived(monthStart(ui.anchor));
   const days = $derived(ui.monthGridDays);
-  const totals = $derived(dayTotals(state, days.filter((d) => monthStart(d) === month), ui.zone, ui.dayStartHour, ui.now));
+  const totals = $derived(dayTotals(tt, days.filter((d) => monthStart(d) === month), ui.zone, ui.dayStartHour, ui.now));
   const weekdays = $derived(daySequence(weekStart(month), 7).map((d) => formatDay(d, getLocale(), { weekday: 'short' })));
 
   function slices(day: string): PieSlice[] {
@@ -25,7 +25,7 @@
     return totalsSlices(t).map((s) => ({
       key: s.key,
       share: s.share,
-      color: tagColor(s.key === NO_TAG ? undefined : state.tags[s.key]),
+      color: tagColor(s.key === NO_TAG ? undefined : tt.tags[s.key]),
     }));
   }
 

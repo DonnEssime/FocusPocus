@@ -1,4 +1,4 @@
-import type { TimetrackState } from '@focuspocus/modules/timetrack';
+import type { Block, TimetrackState } from '@focuspocus/modules/timetrack';
 import {
   addDays,
   addMonths,
@@ -14,6 +14,12 @@ import type { SessionStore } from '../../shell/sessionStore.svelte';
 
 export type ViewKind = 'day' | 'week' | 'month';
 
+/** What the block pop-up is for. One pop-up interaction is always one command (one undo step). */
+export type BlockDialogMode =
+  | { kind: 'create'; startMs: number; endMs: number }
+  | { kind: 'start'; startMs: number }
+  | { kind: 'edit'; block: Block };
+
 /** How often "now" (running block, now line, today) refreshes. */
 const TICK_MS = 15_000;
 
@@ -28,6 +34,8 @@ export class TimetrackUi {
   anchor = $state<DayKey>('');
   zone = $state(currentZone());
   now = $state(Date.now());
+  /** The open block pop-up, if any. */
+  dialog = $state<BlockDialogMode | null>(null);
 
   constructor(private readonly store: SessionStore) {
     this.anchor = this.today;

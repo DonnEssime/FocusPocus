@@ -589,6 +589,6 @@ These are deliberately left out: editing several blocks at once, copy/paste, sea
   - [x] 3. Shell `Modal` and `Popover` primitives (native `<dialog>` and Popover API)
   - [x] 4. Read-only time view: navigation store, toolbar and date picker, day/week timelines, month grid with pies
   - [x] 5. Tags panel: list, add/rename/describe/delete, Dark2 defaults, colour wheel
-  - [ ] 6. Block pop-up, drag-to-create, click-to-edit, Start/Stop tracking
+  - [x] 6. Block pop-up, drag-to-create, click-to-edit, Start/Stop tracking
   - [ ] 7. Block resizing (edge handles, clamping, zero-length delete), statistics panel, final page layout
 - Later: theme and language selection (`app.SetTheme`, `app.SetLanguage`), user-arranged layouts

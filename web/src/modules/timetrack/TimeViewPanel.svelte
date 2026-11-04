@@ -1,11 +1,12 @@
 <script lang="ts">
-  import type { TimetrackState } from '@focuspocus/modules/timetrack';
+  import { runningBlock, timetrackActions, type TimetrackState } from '@focuspocus/modules/timetrack';
   import { addDays, monthStart, weekStart } from '@focuspocus/modules/timetrack/time';
   import { getLocale } from '../../i18n/locale.svelte';
   import Msg from '../../i18n/Msg.svelte';
   import { msgText } from '../../i18n/msg';
-  import { getSessionStore } from '../../shell/context';
+  import { getSessionStore, getShell } from '../../shell/context';
   import Popover from '../../shell/ui/Popover.svelte';
+  import BlockDialog from './BlockDialog.svelte';
   import DatePicker from './DatePicker.svelte';
   import { formatDay, formatDayRange } from './format';
   import MonthGrid from './MonthGrid.svelte';
@@ -14,7 +15,20 @@
 
   const store = getSessionStore();
   const ui = timetrackUiFor(store);
-  const state = $derived(store.moduleState<TimetrackState>('timetrack'));
+  const shell = getShell();
+  const tt = $derived(store.moduleState<TimetrackState>('timetrack'));
+  const running = $derived(runningBlock(tt));
+
+  /** Start opens the pop-up; the block starts when the button was pressed, not when saved. */
+  function startTracking(): void {
+    ui.refresh();
+    ui.dialog = { kind: 'start', startMs: Date.now() };
+  }
+
+  function stopTracking(): void {
+    if (running) shell.run(timetrackActions.stopTracking(running.id, Date.now()));
+    ui.refresh();
+  }
   const VIEWS: ViewKind[] = ['day', 'week', 'month'];
   let picker: Popover;
 
@@ -42,6 +56,12 @@
     <button type="button" class="icon" data-testid="tt-next" aria-label={msgText('timetrack.nav.next')} onclick={() => ui.step(1)}>›</button>
     <button type="button" class="tt-date-label" data-testid="tt-date-label" popovertarget="tt-date-popover">{label}</button>
     <button type="button" data-testid="tt-today" onclick={() => ui.goToday()}><Msg key="timetrack.nav.today" /></button>
+    <span class="spacer"></span>
+    {#if running}
+      <button type="button" class="tracking" data-testid="tt-track" onclick={stopTracking}><Msg key="timetrack.track.stop" /></button>
+    {:else}
+      <button type="button" class="primary" data-testid="tt-track" onclick={startTracking}><Msg key="timetrack.track.start" /></button>
+    {/if}
   </div>
   <Popover id="tt-date-popover" bind:this={picker}>
     <DatePicker
@@ -54,8 +74,11 @@
     />
   </Popover>
   {#if ui.view === 'month'}
-    <MonthGrid {ui} {state} />
+    <MonthGrid {ui} {tt} />
   {:else}
-    <Timeline {ui} {state} />
+    <Timeline {ui} {tt} />
+  {/if}
+  {#if ui.dialog}
+    <BlockDialog mode={ui.dialog} {tt} zone={ui.zone} onclose={() => (ui.dialog = null)} />
   {/if}
 </div>

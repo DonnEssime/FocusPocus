@@ -797,3 +797,85 @@ button.icon {
 .colorhex {
   font-family: ui-monospace, monospace;
 }
+
+.tl-col {
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+button.tl-block {
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.78rem;
+}
+
+button.tl-block:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+
+.tl-block.preview {
+  opacity: 0.75;
+  outline: 2px dashed var(--text);
+  outline-offset: -2px;
+  pointer-events: none;
+}
+
+.tl-block.invalid {
+  background: var(--surface-raised);
+  color: var(--danger);
+  outline-color: var(--danger);
+}
+
+button.tracking {
+  border-color: var(--danger);
+  color: var(--danger);
+  font-weight: 600;
+}
+
+button.danger-button {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.field > span {
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+
+.tag-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  max-height: 12rem;
+  overflow: auto;
+}
+
+.tag-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem 0.2rem 0.45rem;
+  color: var(--text-muted);
+}
+
+.tag-toggle[aria-pressed='true'] {
+  color: var(--text);
+  border-color: var(--text);
+  background: var(--surface-sunken);
+}
+
+.tag-dot {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+}
