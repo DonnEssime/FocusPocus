@@ -411,7 +411,7 @@ A calendar of tracked **blocks**: time intervals with an optional title and any 
 
 - **Blocks are absolute instants.** A block stores `startMs`/`endMs` as UTC epoch ms and nothing more. It does not store a time zone, because a block means "this span of real time", whichever computer recorded it.
 - **Everything is shown in the current computer's local time zone.** If you travel, or open the vault on a computer set to another zone, the same blocks appear at the matching local wall-clock times. Totals per day are also computed in the current zone.
-- **Logical day.** A calendar day runs from the configured **day start hour** to the same hour on the next day, in local time. For example, a block at 02:00 on 5 Nov belongs to the 4 Nov day. Totals per day, the month view and statistics all use logical days. A block that crosses a day boundary is split across the days it touches.
+- **Logical day.** A calendar day runs from the **day start hour** (the day window's `startHour`, see below) to the same hour on the next day, in local time. For example, a block at 02:00 on 5 Nov belongs to the 4 Nov day. Totals per day, the month view and statistics all use logical days. A block that crosses a day boundary is split across the days it touches.
 - **Day window.** The **visible** window of a day is from `startHour` to `endHour`, both whole local hours. The default is 07:00 to 05:00 the next day. If `endHour ≤ startHour`, the end falls on the next day. The window can be at most 24 h; that's the "cannot overlap" rule. Blocks outside the window still exist and count in totals, but the timeline simply clips them; it doesn't need to show them.
 - **Daylight saving time.** A logical day is 23, 24 or 25 real hours long. The timeline is drawn in real elapsed time, so an hour label repeats or is skipped on those days. Do all calendar arithmetic (start of day/week/month, adding days, wall clock ↔ instant) through one `time/` helper built on `Temporal.ZonedDateTime`, with a polyfill where the browser lacks Temporal. Never do it with hand-written `Date` arithmetic.
 - **The week starts on Monday,** defined as one constant (`WEEK_STARTS_ON = 1`).
@@ -455,7 +455,8 @@ All panels sit together on the Time tracking page: `split(h, [timetrack.timeView
   - When a block is created, edited, or stopped, the **block that starts later** is truncated so that it starts where the earlier one ends.
   - If the later block ends up fully covered, it is removed.
   - Truncation is computed in the apply function, so it is deterministic on replay. Undoing the command that caused it restores the other block.
-  - A running block ends at "now" for this rule; it is applied for real when the block is stopped.
+  - A running block ends at "now" for this rule; it is applied for real when the block is stopped. Inside an apply function, "now" is the applying command's `at` (`ApplyContext.at`), never the wall clock, so replay stays deterministic.
+  - Starting tracking while another block runs (for example a merge from another computer) first ends that block at the new start, then applies the rule.
   - Resizing never truncates other blocks; the drag is clamped instead (see below). The truncation rule stays in the apply function as a backstop for edits merged from other computers.
 
 #### Resizing blocks
@@ -481,6 +482,7 @@ All panels sit together on the Time tracking page: `split(h, [timetrack.timeView
 #### Tags
 
 - **Fields:** `name` (a free string, unique after trimming, case-insensitive), `color` (hex), `description` (optional free text). Tags have a stable internal `tagId`, so renaming one is cheap and every block follows the rename.
+- **Name uniqueness is checked by the UI, not by `apply`.** Two computers may create a tag with the same name before syncing. If `apply` rejected the second one, every block that depends on it would be rejected on merge too, losing data. So `apply` accepts duplicates, and the tags panel marks them so the user can rename one.
 - **Tags panel:**
   - A scrollable list of tags, each with a colour swatch, name and description.
   - Add, rename, edit the description, change the colour, delete.
@@ -502,23 +504,67 @@ All panels sit together on the Time tracking page: `split(h, [timetrack.timeView
 
 | Command | Payload | Notes |
 | --- | --- | --- |
-| `tt.CreateBlock` | `{ blockId, startMs, endMs, title, tagIds }` | `deps` on the tags' `CreateTag` |
-| `tt.StartTracking` | `{ blockId, startMs, title, tagIds }` | ends any other running block |
-| `tt.StopTracking` | `{ blockId, endMs }` | `deps` on the Start; undoing it makes the block run again |
-| `tt.EditBlock` | `{ blockId, title?, tagIds?, startMs?, endMs? }` | only changed fields; `startMs`/`endMs` come from resizing (`endMs` not allowed while running) |
-| `tt.DeleteBlock` | `{ blockId }` | |
-| `tt.CreateTag` | `{ tagId, name, color, description }` | |
-| `tt.EditTag` | `{ tagId, name?, color?, description? }` | the colour wheel commits on close, not on every pointer move |
-| `tt.DeleteTag` | `{ tagId }` | tombstone |
+| `tt.CreateBlock` | `{ startMs, endMs, title, tagIds }` | the block id is this command's id; `deps` on the tags |
+| `tt.StartTracking` | `{ startMs, title, tagIds }` | the block id is this command's id; ends any other running block; `deps` on the tags |
+| `tt.StopTracking` | `{ blockId, endMs }` | `deps: [blockId]`; undoing it makes the block run again (a later Start still ends it) |
+| `tt.EditBlock` | `{ blockId, title?, tagIds?, startMs?, endMs? }` | only changed fields; `startMs`/`endMs` come from resizing (`endMs` not allowed while running); `deps: [blockId, …newly added tagIds]` |
+| `tt.DeleteBlock` | `{ blockId }` | `deps: [blockId]` |
+| `tt.CreateTag` | `{ name, color, description }` | the tag id is this command's id |
+| `tt.EditTag` | `{ tagId, name?, color?, description? }` | the colour wheel commits on close, not on every pointer move; `deps: [tagId]` |
+| `tt.DeleteTag` | `{ tagId }` | tombstone; `deps: [tagId]` |
 | `tt.SetDayWindow` | `{ startHour, endHour }` | validated: whole hours, window ≤ 24 h |
 
-All of these are undoable through the Time tracking undo stack. Commands that target a block or tag removed by another writer are rejected-on-merge (§4.5).
+Block and tag ids are the id of the command that created them (as for focus sessions), so "depends on the block" is simply `deps: [blockId]`. All of these are undoable through the Time tracking undo stack. Commands that target a block or tag removed by another writer are rejected-on-merge (§4.5).
 
 #### State and performance
 
 - Blocks are kept sorted by `startMs`, with an interval index for range queries. Totals per logical day, overall and per tag, are cached and invalidated by key when blocks change.
 - Logical-day keys depend on the current time zone and day start hour. Those caches are rebuilt when either one changes, and they are not part of snapshots; snapshots hold only the time-zone-independent block and tag state.
 - Rendering a month or week must not scan all of history.
+
+#### Implementation order
+
+Build the time tracker in seven steps. After each step the app works end to end with all checks green (`npm run check`, `npm run test:e2e`), and the step gets its own commit. The order follows the dependencies: data before views, views before interaction, and the pop-ups' building blocks before the pop-ups. Each step lists what it delivers and what proves it works.
+
+1. **Domain core** (`src/modules/timetrack/`, no UI).
+   - A `time/` helper for zoned arithmetic: logical-day start and end, start of week (Monday) and month, adding days, wall clock ↔ instant. Use native `Temporal` when the browser has it, otherwise a lazily loaded polyfill.
+   - The state: blocks by id, kept sorted by `startMs`; tags by id, with tombstones. The commands in the table above, including the overlap and truncation rule, the at-most-one-running rule, and the lenient Stop and duplicate-name rules.
+   - Action builders that fill in `deps`.
+   - **Proven by:** unit tests per command and rejection reason; DST days (23 h and 25 h, blocks across the boundary); overlap cases (partial, fully covered, running block via `ctx.at`); concurrent Start on two writers; undo of a truncating command restores the other block. Extend the determinism fuzz test (`tests/runner.spec.ts`) to random timetrack commands across three writers, compared against a fresh replay.
+2. **Selectors and aggregates.**
+   - A range query (blocks overlapping `[from, to)`) on the sorted index.
+   - Logical-day splitting.
+   - Per-day totals, overall and per tag, using the 1/*n* rule, with untagged blocks and deleted tags counted as "No tag".
+   - Caches keyed by time zone and day start hour.
+   - **Proven by:** unit tests; a benchmark with 10 years of synthetic blocks (about 40,000) showing that a month render touches only that month's blocks, and how long a full load takes (§8).
+   - **Then freeze the format:** commit the first fixture vault under `tests/fixtures/` with every `tt.*` command, and add a test that loads it. From here on, changes to `tt.*` payloads need upcasters (§5).
+3. **Shell primitives.** `Modal` (backdrop, focus trap, Esc to cancel, Enter to save) and `Popover` (anchored to an element, closes on outside click), both themed with tokens. Steps 4 to 7 all need them.
+   - **Proven by:** a small e2e test of keyboard and focus behaviour.
+4. **Read-only time view.**
+   - A navigation store as UI state: view, anchor date, and Day/Week/Month. Toolbar with ‹ ›, **Today**, and a date label that opens a date-picker `Popover`.
+   - Day and Week timelines for the day window: hour grid, blocks in tag colours (stripes for several tags, contrast-picked text), clipping at the window edges, the running block growing to a "now" line.
+   - The month grid with per-day totals and √-scaled pies; clicking a day opens it in Day view.
+   - A shared plain-SVG `Pie` component, reused by step 7.
+   - **Proven by:** e2e tests that seed blocks through commands in an OPFS vault (`?opfs=`) and check their placement, plus navigation and a screenshot check of each view.
+5. **Tags panel.**
+   - The list with swatch, name and description, plus add, rename, edit description and delete; duplicate names are marked.
+   - New tags get the least-used Dark2 colour.
+   - A colour `Popover` with an HSV wheel and the Dark2 quick picks, committing on close.
+   - Comes before the block pop-up so the pop-up has real tags to toggle.
+   - **Proven by:** e2e tests for create, rename and delete; undo of a delete restores the tag on its blocks.
+6. **Creating and editing blocks.**
+   - The block `Modal`: title, tag toggles, and Delete when editing; one interaction is one command.
+   - Drag on empty timeline space to create a block, snapping to 5 min with a live truncation preview.
+   - Clicking a block opens the pop-up to edit it.
+   - **Start/Stop tracking** button: the start is the moment it was pressed; Stop has no pop-up.
+   - **Proven by:** e2e tests for drag-create, edit, delete, start/stop across a reload, and two windows (BroadcastChannel) seeing the same running block.
+7. **Resizing, then statistics.**
+   - Edge handles with neighbour clamping, the running block's top edge, Esc to cancel, a press under 4 px counting as a click, and the zero-length delete confirmation `Modal`.
+   - The statistics panel for the visible range: total, plus the `Pie` with legend once the range has two or more categories.
+   - Finish the page layout described in *Panels*.
+   - **Proven by:** e2e tests for the resize cases in *Resizing blocks*, and statistics totals matching seeded data.
+
+These are deliberately left out: editing several blocks at once, copy/paste, search, CSV export, and reviewing rejected-on-merge commands (a separate roadmap item that this module needs but doesn't own).
 
 ---
 
@@ -527,7 +573,7 @@ All of these are undoable through the Time tracking undo stack. Commands that ta
 - [x] Project scaffold: npm workspace, Vite + Svelte 5, Vitest, Playwright, build info in the footer, GitHub Pages workflow (`base: /FocusPocus/`)
 - [x] Core: command envelope, runner, incremental apply, checkpoints, batches, per-module undo/redo, upcasters, rejected-on-merge
 - [x] Vault: `StorageBackend` (FS Access + in-memory), live segments, write coalescing, loading and merging, polling, BroadcastChannel, compaction, read-only mode
-- [ ] Vault: on-disk snapshots (`ModuleDefinition.snapshot`), load-time benchmark (§8), first frozen fixture vault
+- [ ] Vault: on-disk snapshots (`ModuleDefinition.snapshot`), once the time tracker benchmark (step 2) shows load time needs them
 - [ ] Vault: surface rejected-on-merge commands to the user for review (today only a count in the status bar)
 - [x] Vault picker: IndexedDB handle, permission re-request, create/open vault
 - [x] Shell: layout tree host (nested tabs and splits), per-module History panel (undo/redo) plus keyboard shortcuts, toasts, status bar
@@ -535,12 +581,13 @@ All of these are undoable through the Time tracking undo stack. Commands that ta
 - [x] i18n registry with **English** only; coverage spec
 - [x] Placeholder panels for the time tracker, wired to its spec'd `tt.SetDayWindow` settings command
 - [x] `focus` module (§10.1): commands, timer and settings panels, sound registry, audio engine, generated sound assets plus licences
-- [ ] `timetrack` core (§10.2): time model (UTC instants, logical days, DST), block and tag commands, overlap truncation, range index, per-day aggregates
-- [ ] `timetrack` time view: Day/Week/Month switch, navigation and date picker, day/week timeline with drag-to-create, running block, month grid with pies
-- [ ] `timetrack` block pop-up (create/edit/delete), Start/Stop tracking
-- [ ] `timetrack` block resizing: edge handles, neighbour clamping, running-block start, zero-length delete confirmation
-- [ ] `timetrack` statistics panel: total plus per-tag pie
-- [ ] `timetrack` tags panel: list, add/delete, rename, description, colour wheel with Dark2 quick picks
-- [ ] `timetrack` settings panel: day window hours
-- [ ] Shell: modal/pop-up and popover primitives
+- [x] `timetrack` settings panel: day window hours (`tt.SetDayWindow`)
+- [ ] `timetrack` (§10.2), in the order of *Implementation order*:
+  - [ ] 1. Domain core: `time/` helper (logical days, DST, Monday weeks), block and tag commands, overlap truncation, running-block rules, determinism fuzz
+  - [ ] 2. Selectors and aggregates: range index, per-day totals per tag, caches, benchmark, **first frozen fixture vault**
+  - [ ] 3. Shell `Modal` and `Popover` primitives
+  - [ ] 4. Read-only time view: navigation store, toolbar and date picker, day/week timelines, month grid with pies
+  - [ ] 5. Tags panel: list, add/rename/describe/delete, Dark2 defaults, colour wheel
+  - [ ] 6. Block pop-up, drag-to-create, click-to-edit, Start/Stop tracking
+  - [ ] 7. Block resizing (edge handles, clamping, zero-length delete), statistics panel, final page layout
 - Later: theme and language selection (`app.SetTheme`, `app.SetLanguage`), user-arranged layouts
