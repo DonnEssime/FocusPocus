@@ -8,6 +8,7 @@
   import { blockBackground, blockInk } from './colors';
   import { formatBalance, formatClock } from '@focuspocus/modules/timetrack/targets';
   import { dayTargetView } from './targetView';
+  import { displayTitle } from './blockTitle';
   import { formatDay, formatHour, formatTime } from './format';
   import type { TimetrackUi } from './ui.svelte';
 
@@ -292,6 +293,7 @@
           {@const tags = blockTags(shown, p.block)}
           {@const isPreview = p.block.id === PREVIEW_ID}
           {@const isResizing = resize?.block.id === p.block.id}
+          {@const name = displayTitle(p.block.title, tags, defaultTitle)}
           <button
             type="button"
             class="tl-block"
@@ -305,18 +307,19 @@
             style:height="{p.height}%"
             style:background={blockBackground(tags)}
             style:color={blockInk(tags)}
-            title={`${p.block.title || defaultTitle} · ${formatTime(p.from, ui.zone, locale)}–${formatTime(p.to, ui.zone, locale)}`}
+            title={`${name} · ${formatTime(p.from, ui.zone, locale)}–${formatTime(p.to, ui.zone, locale)}`}
             onclick={() => {
               if (isPreview || ui.dialog || swallowClick) return;
               ui.refresh();
               ui.dialog = { kind: 'edit', block: p.block };
             }}
           >
-            <span class="tl-block-title">{p.block.title || defaultTitle}</span>
+            <span class="tl-block-title">{name}</span>
             <span class="tl-block-time">
               {formatTime(p.from, ui.zone, locale)}–{p.running ? msgText('timetrack.block.now') : formatTime(p.to, ui.zone, locale)}
             </span>
-            {#if tags.length}<span class="tl-block-tags">{tags.map((t) => t.name).join(', ')}</span>{/if}
+            <!-- An untitled block already shows its tags as its title. -->
+            {#if tags.length && p.block.title}<span class="tl-block-tags">{tags.map((t) => t.name).join(', ')}</span>{/if}
             {#if !isPreview}
               <!-- Edges clipped by the day window have no handle; a running block has no end to drag. -->
               {#if p.block.startMs >= col.range.from}

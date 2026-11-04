@@ -92,7 +92,7 @@ test('clicking a block edits only what changed, and Delete removes it', async ({
   await createBlock(page, at(9), at(10), '', [tag]);
   await dayView(page);
   const block = page.getByTestId('tt-block');
-  await expect(block).toContainText('Working');
+  await expect(block.locator('.tl-block-title')).toHaveText('Admin'); // untitled: named after its tag
   await block.click();
   const dialog = page.getByTestId('tt-block-dialog');
   await expect(dialog.getByTestId('tt-dialog-title')).toHaveValue('');
@@ -181,4 +181,32 @@ test('with a window that ends before midnight, a drag stops at the window end', 
   await page.mouse.move(box.x + box.width / 2, box.y + box.height + 80, { steps: 5 }); // far below
   await page.mouse.up();
   await expect(page.getByTestId('tt-dialog-when')).toHaveText('22:00–23:00');
+});
+
+test('an untitled block is named after its tags, and only falls back to "Working" without any', async ({ page }) => {
+  await openTracker(page, 'titles');
+  const a = await createTag(page, 'Deep work', '#1b9e77');
+  const b = await createTag(page, 'Admin', '#d95f02');
+  await createBlock(page, at(9), at(10), '', [a, b]);
+  await dayView(page);
+  const title = page.getByTestId('tt-block').locator('.tl-block-title');
+  await expect(title).toHaveText('Deep work / Admin');
+  await expect(page.getByTestId('tt-block').locator('.tl-block-tags')).toHaveCount(0); // not twice
+
+  // It follows renames and deletions, because it is never stored.
+  const name = page.getByTestId('tt-tag').nth(1).getByTestId('tt-tag-name');
+  await name.fill('Email');
+  await name.press('Enter');
+  await expect(title).toHaveText('Deep work / Email');
+  await page.getByTestId('tt-tag').nth(1).getByTestId('tt-tag-delete').click();
+  await expect(title).toHaveText('Deep work');
+
+  // The pop-up previews the name as its placeholder, following the tag toggles.
+  await page.getByTestId('tt-block').click();
+  const input = page.getByTestId('tt-dialog-title');
+  await expect(input).toHaveAttribute('placeholder', 'Deep work');
+  await page.getByTestId('tt-block-dialog').getByRole('button', { name: 'Deep work' }).click();
+  await expect(input).toHaveAttribute('placeholder', 'Working');
+  await page.getByTestId('tt-dialog-save').click();
+  await expect(title).toHaveText('Working');
 });

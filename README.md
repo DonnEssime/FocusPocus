@@ -442,7 +442,7 @@ All panels sit together on the Time tracking page: `split(h, [timetrack.timeView
 
 #### Blocks
 
-- **Fields:** `title` (optional) and `tagIds` (any number, may be empty). An empty title is stored as empty and *shown* as the catalog default, "Working". The default title is never written into the data, so it follows the language.
+- **Fields:** `title` (optional) and `tagIds` (any number, may be empty). An empty title is stored as empty and *shown* as the block's live tags joined with " / " ("Deep work / Admin"), or, without tags, as the catalog default "Working". The shown title is never written into the data, so it follows tag renames, deletions and the language. A block shown under its tags doesn't repeat them on a second line; the pop-up's title field shows the would-be name as its placeholder.
 - **Two ways to create one:**
   - **Drag:** release the mouse to open the pop-up. **Save** issues one `tt.CreateBlock`; **Cancel** discards it.
   - **Start tracking:** the pop-up opens. **Save** issues `tt.StartTracking`, using the moment the button was pressed as the start, not the moment Save was clicked. The button then turns into **Stop tracking**, which issues `tt.StopTracking` with `end = now` and no pop-up.

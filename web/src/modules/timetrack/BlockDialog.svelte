@@ -5,6 +5,7 @@
   import { msgText } from '../../i18n/msg';
   import { getShell } from '../../shell/context';
   import Modal from '../../shell/ui/Modal.svelte';
+  import { displayTitle } from './blockTitle';
   import { formatTime } from './format';
   import type { BlockDialogMode } from './ui.svelte';
 
@@ -78,7 +79,7 @@
     <input
       data-testid="tt-dialog-title"
       maxlength={TITLE_MAX}
-      placeholder={msgText('timetrack.block.defaultTitle')}
+      placeholder={displayTitle('', tags.filter((t) => tagIds.includes(t.id)), msgText('timetrack.block.defaultTitle'))}
       bind:value={title}
       autofocus
     />
