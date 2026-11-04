@@ -19,6 +19,9 @@ export const THEME_TOKENS = [
   'success',
   'focus-ring',
   'tag-none',
+  'ink-on-light',
+  'ink-on-dark',
+  'now-line',
   'shadow',
 ] as const;
 

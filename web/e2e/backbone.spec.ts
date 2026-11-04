@@ -16,10 +16,10 @@ async function waitSaved(page: Page): Promise<void> {
   await expect(page.getByTestId('save-status')).toHaveText('All changes saved', { timeout: 15_000 });
 }
 
-test('shows both modules as tabs with their placeholder panels', async ({ page }) => {
+test('shows both modules as tabs with their panels', async ({ page }) => {
   await page.goto(vaultUrl('tabs'));
   await expect(page.getByRole('tab', { name: 'Time tracking' })).toBeVisible();
-  await expect(page.getByText('The calendar is coming soon.')).toBeVisible();
+  await expect(page.getByTestId('tt-timeline')).toBeVisible();
   await expect(page.getByTestId('day-window-summary')).toHaveText('Days are shown from 07:00 to 05:00 the next day.');
 
   await page.getByRole('tab', { name: 'Focus' }).click();

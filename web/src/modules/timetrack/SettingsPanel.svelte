@@ -8,6 +8,8 @@
   const shell = getShell();
   const dayWindow = $derived(store.moduleState<TimetrackState>('timetrack').dayWindow);
 
+  const params = $derived({ start: formatHour(dayWindow.startHour), end: formatHour(dayWindow.endHour) });
+
   function update(patch: Partial<DayWindow>): void {
     shell.run(timetrackActions.setDayWindow({ ...dayWindow, ...patch }));
   }
@@ -34,4 +36,10 @@
       {#each HOURS as h (h)}<option value={h}>{formatHour(h)}</option>{/each}
     </select>
   </label>
+  <p class="muted small" data-testid="day-window-summary">
+    <Msg
+      key={dayWindow.endHour <= dayWindow.startHour ? 'timetrack.dayWindow.summaryNextDay' : 'timetrack.dayWindow.summary'}
+      {params}
+    />
+  </p>
 </form>

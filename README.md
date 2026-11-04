@@ -586,8 +586,8 @@ These are deliberately left out: editing several blocks at once, copy/paste, sea
 - [ ] `timetrack` (§10.2), in the order of *Implementation order*:
   - [x] 1. Domain core: `time.ts` helper (logical days, DST, Monday weeks), block and tag commands, overlap truncation, running-block rules, determinism fuzz
   - [x] 2. Selectors and aggregates: range index, per-day totals per tag, benchmark, **first frozen fixture vault** (`tests/fixtures/vault-v1`)
-  - [ ] 3. Shell `Modal` and `Popover` primitives
-  - [ ] 4. Read-only time view: navigation store, toolbar and date picker, day/week timelines, month grid with pies
+  - [x] 3. Shell `Modal` and `Popover` primitives (native `<dialog>` and Popover API)
+  - [x] 4. Read-only time view: navigation store, toolbar and date picker, day/week timelines, month grid with pies
   - [ ] 5. Tags panel: list, add/rename/describe/delete, Dark2 defaults, colour wheel
   - [ ] 6. Block pop-up, drag-to-create, click-to-edit, Start/Stop tracking
   - [ ] 7. Block resizing (edge handles, clamping, zero-length delete), statistics panel, final page layout

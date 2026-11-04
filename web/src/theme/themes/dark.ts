@@ -21,6 +21,10 @@ export const darkTheme: ThemeDefinition = {
     success: '#66a61e',
     'focus-ring': '#7fd0bc',
     'tag-none': '#6b7078',
+    // Text drawn on tag colours (user data, theme independent): picked per colour for contrast.
+    'ink-on-light': '#111317',
+    'ink-on-dark': '#ffffff',
+    'now-line': '#e5675f',
     shadow: '#00000066',
   },
 };

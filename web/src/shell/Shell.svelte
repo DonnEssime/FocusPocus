@@ -58,6 +58,15 @@
 
   setShell({ setActiveModule: (id) => (activeModule = id), run, undo, redo });
 
+  // Dev-only test hook (removed from production builds): lets e2e tests seed data through commands.
+  if (import.meta.env.DEV) {
+    (window as unknown as Record<string, unknown>).__focuspocus = {
+      dispatch: (action: Action) => store.dispatch(action),
+      commands: () => opened.vs.session.runner.commands(),
+      state: (moduleId: string) => opened.vs.session.getState(moduleId),
+    };
+  }
+
   const appState = $derived(store.moduleState<AppState>('app'));
   $effect(() => applyTheme(resolveTheme(appState.themeId)));
   $effect(() => setLocale(resolveLocale(appState.locale)));
@@ -65,6 +74,8 @@
 
   function onKeydown(e: KeyboardEvent): void {
     if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
+    // A modal owns the keyboard: undoing underneath it would change what it is editing.
+    if (document.querySelector('dialog[open]')) return;
     const target = e.target as HTMLElement | null;
     if (target && (target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) return;
     const key = e.key.toLowerCase();
