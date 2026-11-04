@@ -1,0 +1,114 @@
+{
+  "commands": 21,
+  "issues": {
+    "rejected": [],
+    "unknown": 0,
+    "newer": 0,
+    "invalid": 0
+  },
+  "timetrack": {
+    "dayWindow": {
+      "startHour": 8,
+      "endHour": 2
+    },
+    "runningId": "fixb.1",
+    "tags": [
+      {
+        "id": "fixa.2",
+        "name": "Focus",
+        "color": "#e7298a",
+        "description": "Heads down",
+        "deleted": false
+      },
+      {
+        "id": "fixa.3",
+        "name": "Admin",
+        "color": "#d95f02",
+        "description": "",
+        "deleted": false
+      },
+      {
+        "id": "fixa.4",
+        "name": "Old",
+        "color": "#7570b3",
+        "description": "",
+        "deleted": true
+      }
+    ],
+    "blocks": [
+      {
+        "id": "fixa.5",
+        "startMs": 1791788400000,
+        "endMs": 1791795600000,
+        "title": "Quarterly report",
+        "tagIds": [
+          "fixa.2",
+          "fixa.3"
+        ],
+        "start": "2026-10-12T07:00:00.000Z",
+        "end": "2026-10-12T09:00:00.000Z"
+      },
+      {
+        "id": "fixa.6",
+        "startMs": 1791795600000,
+        "endMs": 1791797400000,
+        "title": "",
+        "tagIds": [
+          "fixa.3",
+          "fixa.4"
+        ],
+        "start": "2026-10-12T09:00:00.000Z",
+        "end": "2026-10-12T09:30:00.000Z"
+      },
+      {
+        "id": "fixa.a",
+        "startMs": 1791799200000,
+        "endMs": 1791801000000,
+        "title": "Email",
+        "tagIds": [
+          "fixa.3"
+        ],
+        "start": "2026-10-12T10:00:00.000Z",
+        "end": "2026-10-12T10:30:00.000Z"
+      },
+      {
+        "id": "fixa.j",
+        "startMs": 1793691001000,
+        "endMs": 1793694601000,
+        "title": "Overlap",
+        "tagIds": [
+          "fixa.3"
+        ],
+        "start": "2026-11-03T07:30:01.000Z",
+        "end": "2026-11-03T08:30:01.000Z"
+      },
+      {
+        "id": "fixb.1",
+        "startMs": 1793698201000,
+        "endMs": null,
+        "title": "Planning",
+        "tagIds": [
+          "fixa.2"
+        ],
+        "start": "2026-11-03T09:30:01.000Z",
+        "end": null
+      }
+    ]
+  },
+  "focus": {
+    "settings": {
+      "durationMin": 50,
+      "tickingSoundId": "rainforest-rain",
+      "finishingSoundId": "bell-single"
+    },
+    "session": {
+      "id": "fixa.h",
+      "startedAt": 1791801000000,
+      "durationMs": 3000000,
+      "tickingSoundId": "rainforest-rain",
+      "finishingSoundId": "bell-single",
+      "stoppedAt": 1791801060000
+    }
+  },
+  "app": {}
+}

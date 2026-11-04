@@ -10,4 +10,12 @@ export const timetrackCatalog = {
   'timetrack.dayWindow.start': { en: 'Day starts at' },
   'timetrack.dayWindow.end': { en: 'Day ends at' },
   'timetrack.error.invalidHour': { en: 'Hours must be whole numbers from 0 to 23.' },
+  'timetrack.error.invalidBlock': { en: 'This block is malformed.' },
+  'timetrack.error.noSuchBlock': { en: 'This block no longer exists.' },
+  'timetrack.error.blockCovered': { en: 'This block would be completely covered by an earlier block.' },
+  'timetrack.error.noSuchTag': { en: 'This tag no longer exists.' },
+  'timetrack.error.invalidTag': { en: 'A tag needs a name of at most 60 characters and a valid colour.' },
+  'timetrack.error.noChanges': { en: 'Nothing to change.' },
+  'timetrack.block.defaultTitle': { en: 'Working' },
+  'timetrack.tag.none': { en: 'No tag' },
 } as const satisfies MessageCatalog;

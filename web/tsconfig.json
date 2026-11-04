@@ -4,7 +4,7 @@
     "target": "ES2023",
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "lib": ["ES2023", "DOM", "DOM.Iterable", "DOM.AsyncIterable"],
+    "lib": ["ES2023", "DOM", "DOM.Iterable", "DOM.AsyncIterable", "ESNext.Temporal"],
     "types": ["vite/client"],
     "strict": true,
     "noUncheckedIndexedAccess": true,

@@ -1,0 +1,3 @@
+{"t":"core.SegmentHeader","format":1,"app":"0.1.0","w":"fixa"}
+{"id":"fixa.j","t":"tt.CreateBlock","v":1,"at":1793700001000,"p":{"startMs":1793689201000,"endMs":1793698201000,"title":"Overlap","tagIds":["fixa.3"]},"deps":["fixa.3"]}
+{"id":"fixa.k","t":"tt.EditBlock","v":1,"at":1793700001001,"p":{"blockId":"fixa.j","startMs":1793691001000,"endMs":1793694601000},"deps":["fixa.j"]}

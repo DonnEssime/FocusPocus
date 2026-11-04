@@ -7,4 +7,6 @@ import { resolveTheme } from './theme/registry';
 // Default theme before any vault is open (vault settings may switch it later).
 applyTheme(resolveTheme(undefined));
 
-mount(App, { target: document.getElementById('app')! });
+// Current Chromium has Temporal built in; load the polyfill only where it is missing.
+const ready = 'Temporal' in globalThis ? Promise.resolve() : import('temporal-polyfill/global');
+void ready.then(() => mount(App, { target: document.getElementById('app')! }));
