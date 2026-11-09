@@ -52,7 +52,7 @@ test('changes a colour with a quick pick or the hex field, committing once on cl
   await expect(picker).toBeHidden();
   await expect(swatch).toHaveCSS('background-color', 'rgb(18, 52, 86)');
   // Several changes in one popover visit are one undo step.
-  await page.getByTestId('undo').click();
+  await page.getByTestId('undo').filter({ visible: true }).click();
   await expect(swatch).toHaveCSS('background-color', 'rgb(27, 158, 119)');
 });
 
@@ -80,7 +80,7 @@ test('deleting a tag removes it from blocks; undo brings it back everywhere', as
   await page.getByTestId('tt-tag-delete').click();
   await expect(page.getByTestId('tt-tag')).toHaveCount(0);
   await expect(block).not.toContainText('Deep work');
-  await page.getByTestId('undo').click();
+  await page.getByTestId('undo').filter({ visible: true }).click();
   await expect(page.getByTestId('tt-tag')).toHaveCount(1);
   await expect(block).toContainText('Deep work');
 });

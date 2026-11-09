@@ -71,7 +71,7 @@ test('the Day view chip sets targets by shortcut or typed hh:mm / %, and refuses
   await chip.click();
   await page.getByTestId('tt-target-0').click();
   await expect(chip).toHaveText('+2:00');
-  await page.getByTestId('undo').click();
+  await page.getByTestId('undo').filter({ visible: true }).click();
   await expect(chip).toHaveText('2:00 / 5:00 → −3:00');
 
   // A future day shows its target only; a day with neither tracked time nor a target shows –.
@@ -119,7 +119,7 @@ test('changing full-time hours asks: going forward keeps the past, retroactively
   await expect(weekBalance(page, '2026-11-02')).toHaveText('0:00 / 7:00 → −7:00');
   await expect(weekBalance(page, '2026-11-03')).toHaveText('0:00 / 3:00 → −3:00'); // hh:mm: never changes
   await expect(weekBalance(page, '2026-11-04')).toHaveText('0:00 / 7:00 → −7:00');
-  await page.getByTestId('undo').click();
+  await page.getByTestId('undo').filter({ visible: true }).click();
   await expect(weekBalance(page, '2026-11-02')).toHaveText('0:00 / 8:00 → −8:00');
 });
 

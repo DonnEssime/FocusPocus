@@ -49,7 +49,7 @@ test('dragging on empty space previews the block, then the pop-up creates it in 
   await expect(block).toHaveCount(1);
   await expect(block).toContainText('Report');
   await expect(block).toContainText('Deep work');
-  await page.getByTestId('undo').click();
+  await page.getByTestId('undo').filter({ visible: true }).click();
   await expect(block).toHaveCount(0);
   await expect(page.getByTestId('tt-tag')).toHaveCount(1); // the tag stays: separate step
 });
@@ -109,7 +109,7 @@ test('clicking a block edits only what changed, and Delete removes it', async ({
   await block.click();
   await dialog.getByTestId('tt-dialog-delete').click();
   await expect(block).toHaveCount(0);
-  await page.getByTestId('undo').click();
+  await page.getByTestId('undo').filter({ visible: true }).click();
   await expect(block).toContainText('Inbox');
 });
 

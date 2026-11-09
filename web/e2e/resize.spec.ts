@@ -40,9 +40,9 @@ test('dragging an edge changes start or end in one undo step', async ({ page }) 
   await expect(page.getByTestId('tt-block-dialog')).toBeHidden();
   await dragEdge(page, block(page, 'A'), 'start', at(8.25));
   await expect(block(page, 'A')).toContainText('08:15–10:30');
-  await page.getByTestId('undo').click();
+  await page.getByTestId('undo').filter({ visible: true }).click();
   await expect(block(page, 'A')).toContainText('09:00–10:30');
-  await page.getByTestId('undo').click();
+  await page.getByTestId('undo').filter({ visible: true }).click();
   await expect(block(page, 'A')).toContainText('09:00–10:00');
 });
 
