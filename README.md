@@ -31,6 +31,7 @@ npm run dev          # http://localhost:5173/FocusPocus/
 | --- | --- |
 | `timetrack` | Calendar-style time tracking (day/week/month), tagged blocks, simple statistics. See §10.2. |
 | `focus` | Simple focus timer: one countdown with a background sound and a finishing sound. See §10.1. |
+| `todo` | Hierarchical to-do list: a pure tree of items with plain-text notes. See §10.3. |
 | `app` (core) | Settings shared by everything: language, theme, layout, module config. |
 
 Modules are **independent**. They do not read each other's state or issue each other's commands. Today each one is shown as a tab. The shell must not assume this, because later we may show modules side by side or in a layout the user arranges (see §6).
@@ -64,6 +65,7 @@ src/
     app/                  app-wide settings (theme, language, later layout)
     timetrack/            commands, state, catalog
     focus/                same shape
+    todo/                 same shape
   registry.ts             composition root: the only file that lists every module and catalog
 web/
   src/
@@ -636,6 +638,46 @@ Build the time tracker in seven steps. After each step the app works end to end 
 
 These are deliberately left out: editing several blocks at once, copy/paste, search, CSV export, and reviewing rejected-on-merge commands (a separate roadmap item that this module needs but doesn't own).
 
+### 10.3 `todo`: hierarchical to-do list
+
+A minimal to-do list shaped as a **pure tree**: every item has exactly one parent (or none, at the top level), and any item, leaf or not, can get children. Items can be reordered among their siblings, but never moved to another parent. Not in scope: moving between parents, due dates, tags, search, rich text.
+
+#### Panels
+
+The **To-dos** tab: the list (`todo.list`) on the left and the History panel (`todo.history`, undo/redo) beside it. The list has no panel header (`showTitle: false`), because it would only repeat the tab's title.
+
+Each row reads, left to right:
+
+- a small **arrow** (parents only) that collapses or expands the children; a collapsed parent shows how many items it hides;
+- the **title**, which opens the item's pop-up when clicked; a small lines icon marks items that have notes;
+- on hover or keyboard focus: **+** (add a sub-task), **✓** (finished / not finished) and a **trash bin** (delete).
+
+Finished items are struck through and muted, and their ✓ stays visible. Children hang under their parent with a thin guide line.
+
+- **Adding.** New items go to the **top** of their list. The field above the list adds a top-level item. **+** opens an inline field at the top of that item's children (expanding it if collapsed). Enter adds the item and keeps the field open for the next one; Esc closes it; leaving the field adds what was typed, so nothing is lost.
+- **Reordering.** Drag a row onto a sibling: the upper half drops it before, the lower half after, and a line shows where it lands. Rows of other levels are not drop targets. With a row's button focused, Alt+↑/↓ moves the item past its neighbour and keeps the focus on it. Each move is one `todo.Reorder`.
+- **Undo reveals.** When an undo or redo changes an item hidden under collapsed parents, exactly those collapsed ancestors are expanded (for an item that disappears, the ones hiding the place where it was). The shell tells the module which action an undo/redo is about (`ShellApi.onUndoRedo`); `collapsedAround` in the domain picks the ancestors.
+- **The pop-up** (`Modal`) edits the title and the plain-text notes. Save (or Ctrl/⌘+Enter) is one command, sending only the fields that changed; Cancel and Esc change nothing.
+- **Deleting** removes the item with all its descendants at once, without a confirmation: undo brings the whole subtree back.
+- **Finished is per item.** Ticking a parent does not tick its children, and vice versa.
+
+#### Commands
+
+| Command | Payload | Undoable | Notes |
+| --- | --- | --- | --- |
+| `todo.Create` | `{ parentId: string \| null, title }` | yes | the item id is this command's id; inserted as the **first** child; `deps: [parentId]`; expands a collapsed parent |
+| `todo.Edit` | `{ itemId, title?, notes? }` | yes | only changed fields; title 1–200 chars after trimming, notes ≤ 20,000; `deps: [itemId]` |
+| `todo.SetDone` | `{ itemId, done }` | yes | setting the current value again is a no-op (two windows ticking the same item); `deps: [itemId]` |
+| `todo.Reorder` | `{ itemId, beforeId: string \| null }` | yes | moves the item in front of its sibling `beforeId`, or to the end for `null`; rejects non-siblings and moves that change nothing; `deps: [itemId, beforeId]` |
+| `todo.Delete` | `{ itemId }` | yes | removes the whole subtree; `deps: [itemId]` |
+| `todo.SetCollapsed` | `{ itemId, collapsed }` | **no** | view state, shared through the vault so the tree looks the same everywhere; **no `deps`** (a non-undoable dependent would block undoing the item's creation); a missing item is ignored |
+
+Commands that target an item removed by another writer (for example a sub-task added under an item that was deleted elsewhere) are rejected-on-merge (§4.5).
+
+#### State
+
+`{ items: Record<id, TodoItem>, roots: id[] }`, where a `TodoItem` is `{ id, parentId, title, notes, done, collapsed, children: id[] }`. Both directions of the parent link are stored, so rendering never searches. A command copies the item map once, which is fine for the hundreds to low thousands of items a to-do list holds. The payloads are not frozen by a fixture vault yet; do that before the first change to a `todo.*` payload.
+
 ---
 
 ## 11. Roadmap / TODO
@@ -665,4 +707,7 @@ These are deliberately left out: editing several blocks at once, copy/paste, sea
   - [x] 9. Settings pop-up: enable checkbox, full-time hours with the "going forward / retroactively" question
   - [x] 10. Day view target chip, week-header balances, target popover (0/50/100 %, `hh:mm` / `%` entry)
   - [x] 11. Statistics: shown-range balance, interval balance with start/end (or now) editor
+- [x] `todo` module (§10.3): tree domain and commands, list panel with inline adding, notes pop-up, collapse, finish, subtree delete
+- [x] `todo`: new items on top, reordering siblings (drag, Alt+↑/↓), undo/redo reveals hidden items
+- [ ] `todo`: frozen fixture vault for the `todo.*` payloads
 - Later: theme and language selection (`app.SetTheme`, `app.SetLanguage`), user-arranged layouts
