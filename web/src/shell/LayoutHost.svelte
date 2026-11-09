@@ -1,5 +1,6 @@
 <script lang="ts">
   import Msg from '../i18n/Msg.svelte';
+  import { msgText } from '../i18n/msg';
   import { PANELS } from '../modules';
   import { getShell } from './context';
   import LayoutHost from './LayoutHost.svelte';
@@ -29,10 +30,11 @@
     <section
       class="panel"
       data-panel={def.id}
+      aria-label={def.showTitle === false ? msgText(def.titleKey) : undefined}
       onpointerdowncapture={() => shell.setActiveModule(def.module)}
       onfocusincapture={() => shell.setActiveModule(def.module)}
     >
-      <h2 class="panel-title"><Msg key={def.titleKey} /></h2>
+      {#if def.showTitle !== false}<h2 class="panel-title"><Msg key={def.titleKey} /></h2>{/if}
       <div class="panel-body"><def.component {...def.props} /></div>
     </section>
   {:else}

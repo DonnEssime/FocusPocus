@@ -116,6 +116,11 @@ export class CommandRunner {
     return this.byId.has(id);
   }
 
+  /** A command of the merged log by id. */
+  get(id: string): Command | undefined {
+    return this.byId.get(id)?.cmd;
+  }
+
   /** The merged log in global order, including Undo commands and suppressed ones. */
   commands(): Command[] {
     return this.entries.map((e) => e.cmd);

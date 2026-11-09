@@ -1,6 +1,8 @@
 <script lang="ts">
   import { resolveLocale } from '@focuspocus/core/i18n/locales';
   import type { MessageParams } from '@focuspocus/core/i18n/types';
+  import { UNDO, type UndoPayload } from '@focuspocus/core/command/core-commands';
+  import type { Command } from '@focuspocus/core/command/types';
   import type { Action } from '@focuspocus/core/session';
   import type { AppState } from '@focuspocus/modules/app';
   import { onDestroy, onMount } from 'svelte';
@@ -10,7 +12,7 @@
   import { PANELS } from '../modules';
   import { applyTheme } from '../theme/applyTheme';
   import { resolveTheme } from '../theme/registry';
-  import { setSessionStore, setShell } from './context';
+  import { setSessionStore, setShell, type UndoRedoListener } from './context';
   import LayoutHost from './LayoutHost.svelte';
   import { DEFAULT_LAYOUT, firstPanel } from './layout';
   import { SessionStore } from './sessionStore.svelte';
@@ -46,17 +48,36 @@
     return result;
   }
 
-  function undo(moduleId: string): void {
-    const r = opened.vs.session.undo(moduleId);
-    if (!r.ok) toast(r.reason, r.params);
+  const undoListeners = new Map<string, Set<UndoRedoListener>>();
+
+  function onUndoRedo(moduleId: string, listener: UndoRedoListener): () => void {
+    let set = undoListeners.get(moduleId);
+    if (!set) undoListeners.set(moduleId, (set = new Set()));
+    set.add(listener);
+    return () => set.delete(listener);
   }
 
-  function redo(moduleId: string): void {
-    const r = opened.vs.session.redo(moduleId);
-    if (!r.ok) toast(r.reason, r.params);
+  /** The action an undo/redo target stands for: a redo targets an Undo, which targets the action. */
+  function subjectOf(id: string | undefined): Command | undefined {
+    const runner = opened.vs.session.runner;
+    let cmd = id ? runner.get(id) : undefined;
+    for (let depth = 0; cmd?.t === UNDO && depth < 16; depth++) cmd = runner.get((cmd.p as UndoPayload).target);
+    return cmd;
   }
 
-  setShell({ setActiveModule: (id) => (activeModule = id), run, notify: toast, undo, redo });
+  function undoOrRedo(moduleId: string, kind: 'undo' | 'redo'): void {
+    const session = opened.vs.session;
+    const subject = subjectOf(kind === 'undo' ? session.runner.undoTarget(moduleId) : session.runner.redoTarget(moduleId));
+    const after = subject ? [...(undoListeners.get(moduleId) ?? [])].map((l) => l(subject)) : [];
+    const r = kind === 'undo' ? session.undo(moduleId) : session.redo(moduleId);
+    if (!r.ok) toast(r.reason, r.params);
+    else for (const fn of after) fn?.();
+  }
+
+  const undo = (moduleId: string) => undoOrRedo(moduleId, 'undo');
+  const redo = (moduleId: string) => undoOrRedo(moduleId, 'redo');
+
+  setShell({ setActiveModule: (id) => (activeModule = id), run, notify: toast, undo, redo, onUndoRedo });
 
   // Dev-only test hook (removed from production builds): lets e2e tests seed data through commands.
   if (import.meta.env.DEV) {

@@ -1,4 +1,4 @@
-import type { CommandResult } from '@focuspocus/core/command/types';
+import type { Command, CommandResult } from '@focuspocus/core/command/types';
 import type { MessageParams } from '@focuspocus/core/i18n/types';
 import type { Action } from '@focuspocus/core/session';
 import { getContext, setContext } from 'svelte';
@@ -14,7 +14,15 @@ export interface ShellApi {
   /** Undo / redo the latest step of one module; failures are shown as a toast. */
   undo(moduleId: string): void;
   redo(moduleId: string): void;
+  /**
+   * Called just before an undo or redo in `moduleId` with the action it reverts or re-applies
+   * (never the Undo command itself). A returned function runs once it succeeded, so a module can
+   * compare before and after, e.g. to bring the changed item into view. Returns an unsubscribe.
+   */
+  onUndoRedo(moduleId: string, listener: UndoRedoListener): () => void;
 }
+
+export type UndoRedoListener = (subject: Command) => void | (() => void);
 
 const SESSION = Symbol('session');
 const SHELL = Symbol('shell');

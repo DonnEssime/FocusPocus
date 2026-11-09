@@ -9,6 +9,8 @@ export interface PanelDefinition {
   titleKey: AppMessageKey;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   component: Component<any>;
+  /** `false` hides the small header, e.g. when it would only repeat the tab's title. */
+  showTitle?: boolean;
   /** Props passed to the component (lets one component serve several modules). */
   props?: Record<string, unknown>;
 }
