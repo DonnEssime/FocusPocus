@@ -1,0 +1,189 @@
+/* To-do list (§10.3). Colours come from theme tokens only. */
+.todos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 48rem;
+}
+
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+/* Children hang under their parent's title, with a thin guide line. */
+.todo-children {
+  margin-left: 0.7rem;
+  padding-left: 0.85rem;
+  border-left: 1px solid var(--border);
+}
+
+.todo-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2rem;
+  padding: 0 0.25rem;
+  border-radius: 6px;
+}
+
+.todo-row:hover,
+.todo-row:focus-within {
+  background: var(--surface-raised);
+}
+
+/* Drag to reorder: the dragged row fades, a line shows where it lands among its siblings. */
+.todo-row.dragging {
+  opacity: 0.4;
+}
+
+.todo-row.drop-before {
+  box-shadow: inset 0 2px 0 var(--accent);
+}
+
+.todo-row.drop-after {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+/* Small borderless icon buttons. */
+button.todo-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-muted);
+}
+
+button.todo-icon:hover:not(:disabled) {
+  color: var(--text);
+  background: var(--surface-sunken);
+}
+
+.todo-icon svg,
+.todo-notes-mark {
+  width: 1rem;
+  height: 1rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.todo-twisty svg {
+  transition: transform 0.12s ease;
+}
+
+.todo-twisty[aria-expanded='true'] svg {
+  transform: rotate(90deg);
+}
+
+.todo-twisty-spacer {
+  flex: none;
+  width: 1.6rem;
+}
+
+/* The title is a button that opens the notes pop-up, styled as plain text. */
+button.todo-title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.25rem 0;
+  border: none;
+  background: none;
+  text-align: left;
+}
+
+.todo-title-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todo-notes-mark {
+  flex: none;
+  color: var(--text-muted);
+}
+
+.todo-hidden {
+  flex: none;
+}
+
+/* Row actions stay out of the way until the row is hovered or focused. */
+.todo-actions {
+  display: flex;
+  gap: 0.1rem;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.todo-row:hover .todo-actions,
+.todo-row:focus-within .todo-actions {
+  opacity: 1;
+}
+
+button.todo-check:hover:not(:disabled),
+.todo-check[aria-pressed='true'] {
+  color: var(--success);
+}
+
+button.todo-delete:hover:not(:disabled) {
+  color: var(--danger);
+}
+
+/* A finished item: struck through and muted; its check mark stays visible. */
+.todo.done > .todo-row .todo-title-text {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.todo.done > .todo-row .todo-actions {
+  opacity: 1;
+}
+
+.todo.done > .todo-row .todo-actions > :not(.todo-check) {
+  opacity: 0;
+}
+
+.todo.done > .todo-row:hover .todo-actions > *,
+.todo.done > .todo-row:focus-within .todo-actions > * {
+  opacity: 1;
+}
+
+.todo-add {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.todo-add input {
+  flex: 1;
+  min-width: 0;
+}
+
+.todo-add-row {
+  padding: 0.2rem 0 0.2rem 1.85rem;
+}
+
+.todo-add.inline input {
+  padding: 0.2rem 0.5rem;
+}
+
+textarea.todo-notes {
+  font: inherit;
+  color: inherit;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  resize: vertical;
+  min-height: 8rem;
+}

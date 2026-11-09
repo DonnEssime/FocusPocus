@@ -33,7 +33,7 @@ async function expectSummary(page: Page, text: string | RegExp): Promise<void> {
   await closeSettings(page);
 }
 
-test('shows both modules as tabs with their panels', async ({ page }) => {
+test('shows the modules as tabs with their panels', async ({ page }) => {
   await page.goto(vaultUrl('tabs'));
   await expect(page.getByRole('tab', { name: 'Time tracking' })).toBeVisible();
   await expect(page.getByTestId('tt-timeline')).toBeVisible();
@@ -42,9 +42,13 @@ test('shows both modules as tabs with their panels', async ({ page }) => {
 
   await page.getByRole('tab', { name: 'Focus' }).click();
   await expect(page.getByTestId('focus-countdown')).toHaveText('25:00');
-  // Only time tracking shows undo/redo buttons; Focus has none.
-  await expect(page.locator('[data-panel="timetrack.history"]')).toBeHidden();
-  await expect(page.locator('[data-panel$=".history"]')).toHaveCount(1);
+  // Focus has no undo/redo buttons; time tracking and to-dos each have their own.
+  await expect(page.locator('[data-panel$=".history"]').filter({ visible: true })).toHaveCount(0);
+  await expect(page.locator('[data-panel$=".history"]')).toHaveCount(2);
+
+  await page.getByRole('tab', { name: 'To-dos' }).click();
+  await expect(page.getByTestId('todo-panel')).toBeVisible();
+  await expect(page.locator('[data-panel="todo.history"]')).toBeVisible();
 });
 
 test('settings close with Esc, and keyboard undo waits until they are closed', async ({ page }) => {
@@ -79,10 +83,10 @@ test('commands persist across reloads and undo/redo is per module', async ({ pag
   await expect(page.getByTestId('focus-countdown')).toHaveText('50:00');
   await page.getByRole('tab', { name: 'Time tracking' }).click();
   await expectSummary(page, /from 08:00/);
-  await page.getByTestId('undo').click();
+  await page.getByTestId('undo').filter({ visible: true }).click();
   await expectSummary(page, /from 07:00/);
-  await expect(page.getByTestId('undo')).toBeDisabled();
-  await page.getByTestId('redo').click();
+  await expect(page.getByTestId('undo').filter({ visible: true })).toBeDisabled();
+  await page.getByTestId('redo').filter({ visible: true }).click();
 
   await waitSaved(page);
   await page.reload();
@@ -107,6 +111,6 @@ test('two windows on the same vault stay in sync', async ({ context }) => {
   await a.getByTestId('tt-day-end').selectOption('23');
   await closeSettings(a);
   await expectSummary(b, 'Days are shown from 07:00 to 23:00.');
-  await b.getByTestId('undo').click();
+  await b.getByTestId('undo').filter({ visible: true }).click();
   await expectSummary(a, 'Days are shown from 07:00 to 05:00 the next day.');
 });

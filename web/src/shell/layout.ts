@@ -67,6 +67,18 @@ export const DEFAULT_LAYOUT: LayoutNode = {
         ],
       },
     },
+    {
+      // The tree on the left, undo/redo beside it (§10.3).
+      title: 'todo.title',
+      node: {
+        kind: 'split',
+        direction: 'row',
+        children: [
+          { node: panel('todo.list'), weight: 1 },
+          { node: panel('todo.history'), fit: true },
+        ],
+      },
+    },
   ],
 };
 
