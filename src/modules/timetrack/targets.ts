@@ -1,9 +1,10 @@
 /**
  * Target hours and balances (§10.2 *Target hours*). Targets attach to calendar dates (`DayKey`),
  * percentages resolve against the effective-dated full-time hours, and a balance is always
- * `tracked − Σ targets` over whole logical days up to today.
+ * `tracked − Σ targets` over whole logical days: up to today, plus the future days that already
+ * have tracked time.
  */
-import { firstBlock, getBlock, trackedBefore } from './blocks';
+import { blocksInRange, firstBlock, getBlock, lastBlock, trackedBefore } from './blocks';
 import type { TimetrackState } from './index';
 import { dayRange, logicalDayOf, type DayKey } from './time';
 
@@ -197,7 +198,7 @@ export function targetSum(t: TargetsState, first: DayKey, last: DayKey): number 
 }
 
 export interface Balance {
-  /** The days actually aggregated: `[first, last]`, or null when nothing (or only the future) is in range. */
+  /** The days actually aggregated: `[first, last]`, or null when nothing counts in range (only untracked future). */
   first: DayKey | null;
   last: DayKey | null;
   trackedMs: number;
@@ -211,21 +212,39 @@ export interface BalanceContext {
   now: number;
 }
 
+const NO_BALANCE: Balance = { first: null, last: null, trackedMs: 0, targetMs: 0, balanceMs: 0 };
+
 /**
- * Balance over the logical days `[first, last]`, clipped to today: future days never count, today
- * counts in full. Every day contributes `tracked − target`, so no per-day scan is needed.
- * Cost: O(buckets) for the tracked time plus O(log n + targets in range).
+ * Balance over the logical days `[first, last]`. Days up to today count in full; a future day
+ * counts only once it has tracked time (planned blocks), and then with its target too. All blocks
+ * count, also those later than now. Every day contributes `tracked − target`.
+ * Cost: O(buckets) for the tracked time plus O(log n + targets in range) plus O(future blocks).
  */
 export function balanceOver(state: TimetrackState, first: DayKey, last: DayKey, ctx: BalanceContext): Balance {
+  if (first > last) return NO_BALANCE;
   const today = logicalDayOf(ctx.now, ctx.zone, ctx.dayStartHour);
-  const end = last < today ? last : today;
-  if (first > end) return { first: null, last: null, trackedMs: 0, targetMs: 0, balanceMs: 0 };
+  const pastEnd = last < today ? last : today;
   const from = dayRange(first, ctx.zone, ctx.dayStartHour).from;
-  const to = Math.min(dayRange(end, ctx.zone, ctx.dayStartHour).to, ctx.now);
+  const to = dayRange(last, ctx.zone, ctx.dayStartHour).to;
   const running = state.runningId ? getBlock(state.blocks, state.runningId) : undefined;
   const tracked = Math.max(0, trackedBefore(state.blocks, to, ctx.now, running) - trackedBefore(state.blocks, from, ctx.now, running));
-  const target = targetSum(state.targets, first, end);
-  return { first, last: end, trackedMs: tracked, targetMs: target, balanceMs: tracked - target };
+  let target = first <= pastEnd ? targetSum(state.targets, first, pastEnd) : 0;
+
+  // Future days with tracked time (blocks are split at day boundaries, so each lies in one day).
+  const futureDays = new Set<DayKey>();
+  if (last > today) {
+    const futureFrom = Math.max(from, dayRange(today, ctx.zone, ctx.dayStartHour).to);
+    for (const b of blocksInRange(state.blocks, futureFrom, to, ctx.now)) {
+      futureDays.add(logicalDayOf(Math.max(b.startMs, futureFrom), ctx.zone, ctx.dayStartHour));
+    }
+  }
+  for (const day of futureDays) target += targetMs(state.targets, day);
+
+  const sortedFuture = [...futureDays].sort();
+  const aggFirst = first <= pastEnd ? first : sortedFuture[0];
+  const aggLast = sortedFuture.length ? sortedFuture.at(-1)! : pastEnd;
+  if (!aggFirst) return NO_BALANCE;
+  return { first: aggFirst, last: aggLast, trackedMs: tracked, targetMs: target, balanceMs: tracked - target };
 }
 
 /** The first day with tracked time or a target: where "since the beginning" starts. */
@@ -241,8 +260,12 @@ export function firstActiveDay(state: TimetrackState, ctx: BalanceContext): DayK
 export function intervalBalance(state: TimetrackState, ctx: BalanceContext): Balance {
   const { from, to } = state.targets.interval;
   const first = from ?? firstActiveDay(state, ctx);
-  const last = to ?? logicalDayOf(ctx.now, ctx.zone, ctx.dayStartHour);
-  if (!first) return { first: null, last: null, trackedMs: 0, targetMs: 0, balanceMs: 0 };
+  if (!first) return NO_BALANCE;
+  // "Now" runs through today, and on to the last planned block if there is one.
+  const today = logicalDayOf(ctx.now, ctx.zone, ctx.dayStartHour);
+  const end = lastBlock(state.blocks);
+  const lastPlanned = end ? logicalDayOf(Math.max(end.startMs, (end.endMs ?? ctx.now) - 1), ctx.zone, ctx.dayStartHour) : today;
+  const last = to ?? (lastPlanned > today ? lastPlanned : today);
   return balanceOver(state, first, last, ctx);
 }
 

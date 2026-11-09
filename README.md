@@ -520,7 +520,7 @@ Each logical day can have a **target**: how long you intend to work that day. Th
   - `{ ms }`: an absolute duration, entered as `hh:mm`. It never changes when settings change.
   - nothing: target 0. Choosing 0 % clears the day's entry, so "0 %" and "no target" are the same thing.
 - **Setting it** (when targets are on):
-  - **Day view:** a target chip next to the date label, reading `worked / target → balance`, for example "6:15 / 8:00 → −1:45". With a target of 0 only the balance shows ("+2:00"). A future day shows its target only ("0:00 / 8:00"); a day with neither tracked time nor a target shows "–". Only the balance is coloured.
+  - **Day view:** a target chip next to the date label, reading `worked / target → balance`, for example "6:15 / 8:00 → −1:45". With a target of 0 only the balance shows ("+2:00"). A future day without tracked time shows its target only ("0:00 / 8:00"); a day with neither tracked time nor a target shows "–". Only the balance is coloured.
   - **Week view:** each day column header shows the same figure as the Day view chip.
   - **Month view:** each day cell shows the same `worked / target → balance` figure in place of its total, with the balance coloured (over / under) as everywhere else. Days that don't count stay empty, to keep the grid calm.
   - Clicking either opens a popover with:
@@ -545,12 +545,13 @@ Either way, days with an `hh:mm` target are never affected; the question only co
   > **balance = (tracked time over those days) − (sum of their targets)**
 
   and no per-day scan is needed. The inclusion rule still matters for what is *shown* ("12 days counted"), not for the number itself.
-- **Future days never count.** Days after today are excluded from every aggregation; otherwise a week view on Monday morning would show −40:00. **Today counts in full**, so its open target shows as a negative balance ("1:45 to go"), which is the useful reading during the day.
+- **All blocks count, also those later than now.** Tracked time is never clipped to the current moment: a block planned for this afternoon already counts, just as it does for "tracked this week".
+- **Future days count only once they have tracked time.** A day after today without blocks is excluded from every aggregation; otherwise a week view on Monday morning would show −40:00. A future day with blocks counts in full, target included, so planning Wednesday's work doesn't show as overtime. Finding those days costs O(future blocks in range). **Today counts in full**, so its open target shows as a negative balance ("1:45 to go"), which is the useful reading during the day.
 
 ##### Statistics (when targets are on)
 
-- **Shown range** (the current day, week or month): target sum, tracked time and balance over the included days up to today.
-- **Balance over an interval**: a **start date**, or **since the beginning** (the first day with tracked time or a target, the default), and an **end date**, or **now** (through today, the default).
+- **Shown range** (the current day, week or month): target sum, tracked time and balance over the included days (up to today, plus future days with tracked time).
+- **Balance over an interval**: a **start date**, or **since the beginning** (the first day with tracked time or a target, the default), and an **end date**, or **now** (through today, or through the last planned block if that is later; the default).
   - The interval is vault state (`tt.SetBalanceInterval`), so it syncs and is undoable, because the user expects to set it often.
   - It is edited in the statistics panel with the date picker popover.
   - This is also how the balance is "zeroed out": move the start date, which changes no tracking data or target settings. Past intervals can be inspected the same way, by setting both dates.

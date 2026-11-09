@@ -112,7 +112,7 @@ describe('target commands', () => {
 });
 
 describe('balances', () => {
-  it('is tracked minus targets over whole days up to today; future days never count', () => {
+  it('is tracked minus targets over whole days up to today; untracked future days never count', () => {
     const { s } = session();
     // Monday 2 Nov: target 100 %, worked 9 h. Tuesday: no target, worked 1 h. Wednesday (today):
     // target 8 h, worked 2 h so far. Thursday (future): target 100 %.
@@ -128,6 +128,27 @@ describe('balances', () => {
     // A late block (02:00 on 5 Nov) still belongs to the 4 Nov day.
     s.dispatch(tt.createBlock({ startMs: D4 + 19 * H, endMs: D4 + 20 * H, title: '', tagIds: [] }));
     expect(balanceOver(state(s), '2026-11-04', '2026-11-04', ctx(D4 + 21 * H)).trackedMs).toBe(3 * H);
+  });
+
+  it('counts blocks later than now, and future days once they have tracked time', () => {
+    const { s } = session();
+    // Today (4 Nov, NOW is during the day): a block later today. Thursday: target 100 %, a planned
+    // 3 h block. Friday: target 100 %, nothing planned.
+    s.dispatch(tt.setDayTarget('2026-11-05', { percent: 100 }));
+    s.dispatch(tt.setDayTarget('2026-11-06', { percent: 100 }));
+    s.dispatch(tt.createBlock({ startMs: D4 + 11 * H, endMs: D4 + 12 * H, title: '', tagIds: [] }));
+    s.dispatch(tt.createBlock({ startMs: D4 + 24 * H + H, endMs: D4 + 24 * H + 4 * H, title: '', tagIds: [] }));
+    const c = ctx(D4 + H);
+    expect(balanceOver(state(s), '2026-11-04', '2026-11-04', c).trackedMs).toBe(H);
+    expect(balanceOver(state(s), '2026-11-05', '2026-11-05', c)).toEqual({
+      first: '2026-11-05', last: '2026-11-05', trackedMs: 3 * H, targetMs: 8 * H, balanceMs: -5 * H,
+    });
+    expect(balanceOver(state(s), '2026-11-06', '2026-11-06', c).first).toBeNull();
+    expect(balanceOver(state(s), '2026-11-02', '2026-11-08', c)).toEqual({
+      first: '2026-11-02', last: '2026-11-05', trackedMs: 4 * H, targetMs: 8 * H, balanceMs: -4 * H,
+    });
+    // "Now" in the interval reaches the last planned block.
+    expect(intervalBalance(state(s), c)).toMatchObject({ first: '2026-11-04', last: '2026-11-05', balanceMs: -4 * H });
   });
 
   it('counts the running block up to now', () => {

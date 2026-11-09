@@ -141,6 +141,10 @@ export function firstBlock(index: BlockIndex): Block | undefined {
   return index.lists[0]?.[0];
 }
 
+export function lastBlock(index: BlockIndex): Block | undefined {
+  return index.lists.at(-1)?.at(-1);
+}
+
 export function* allBlocks(index: BlockIndex): Generator<Block> {
   for (const list of index.lists) yield* list;
 }
