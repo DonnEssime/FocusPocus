@@ -4,7 +4,7 @@
   import { msgText } from '../../i18n/msg';
   import { getSessionStore, getShell } from '../../shell/context';
   import { focusAudioFor } from './audio';
-  import { resolveSound, soundsOf, type SoundKind } from './sounds';
+  import { resolveSound, soundsOf, type SoundKind } from '../../sounds/registry';
 
   const store = getSessionStore();
   const shell = getShell();

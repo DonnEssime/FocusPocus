@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Synthesizes the focus timer's sounds and encodes them as Ogg/Opus into
- * web/src/modules/focus/sounds/. Fully deterministic (seeded PRNG), so re-running it
+ * Synthesizes the app's bundled sounds and encodes them as Ogg/Opus into
+ * web/src/sounds/. Fully deterministic (seeded PRNG), so re-running it
  * reproduces the same audio. The output is original work, released under CC0 1.0.
  *
  *   node scripts/generate-sounds.mjs        (requires ffmpeg with libopus on PATH)
@@ -15,7 +15,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SR = 48_000;
-const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'web', 'src', 'modules', 'focus', 'sounds');
+const OUT_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'web', 'src', 'sounds');
 
 // ------------------------------------------------------------------ primitives
 

@@ -50,4 +50,10 @@ export const shellCatalog = {
   'shell.status.rejected': { en: '{count} conflicting change(s) were skipped' },
   'shell.status.vault': { en: 'Vault: {name}' },
   'shell.status.closeVault': { en: 'Close vault' },
+  // Bundled sounds (web/src/sounds), shared by the modules that play them.
+  'shell.sound.clock-tick': { en: 'Clock ticking' },
+  'shell.sound.rainforest-rain': { en: 'Rainforest rain' },
+  'shell.sound.bell-single': { en: 'Single bell' },
+  'shell.sound.bell-triple': { en: 'Triple bell' },
+  'shell.sound.chime-soft': { en: 'Soft chimes' },
 } as const satisfies MessageCatalog;

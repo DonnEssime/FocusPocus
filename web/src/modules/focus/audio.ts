@@ -1,5 +1,6 @@
 import { type FocusSession, type FocusState, sessionEndsAt } from '@focuspocus/modules/focus';
-import { resolveSound, type SoundKind } from './sounds';
+import { SoundLoader } from '../../sounds/loader';
+import { resolveSound, type SoundKind } from '../../sounds/registry';
 
 const FADE_S = 0.05;
 const PREVIEW_S = 3;
@@ -23,8 +24,7 @@ interface PlayingSession {
  */
 export class FocusAudio {
   private ctx: AudioContext | null = null;
-  private readonly encoded = new Map<string, Promise<ArrayBuffer>>();
-  private readonly decoded = new Map<string, Promise<AudioBuffer>>();
+  private readonly sounds = new SoundLoader(() => this.unlock());
   private session: PlayingSession | null = null;
   private preview: { source: AudioBufferSourceNode; gain: GainNode } | null = null;
   private sessionToken = 0;
@@ -43,7 +43,7 @@ export class FocusAudio {
 
   /** Fetch (not decode) sounds ahead of time, so Start and previews react instantly. */
   prefetch(kind: SoundKind, id: string): void {
-    void this.fetchEncoded(resolveSound(kind, id).src).catch(() => undefined);
+    this.sounds.prefetch(resolveSound(kind, id).src);
   }
 
   /** Create/resume the AudioContext. Call synchronously from a click or change handler (autoplay policy). */
@@ -58,8 +58,8 @@ export class FocusAudio {
     this.stopSession();
     const token = ++this.sessionToken;
     const [tickBuffer, finishBuffer] = await Promise.all([
-      this.load(resolveSound('ticking', session.tickingSoundId).src),
-      this.load(resolveSound('finishing', session.finishingSoundId).src),
+      this.sounds.load(resolveSound('ticking', session.tickingSoundId).src),
+      this.sounds.load(resolveSound('finishing', session.finishingSoundId).src),
     ]);
     if (token !== this.sessionToken) return; // stopped (or restarted) while loading
     const remainingS = (sessionEndsAt(session) - Date.now()) / 1000;
@@ -129,7 +129,7 @@ export class FocusAudio {
     const ctx = this.unlock();
     this.stopPreview();
     const token = ++this.previewToken;
-    const buffer = await this.load(resolveSound(kind, id).src);
+    const buffer = await this.sounds.load(resolveSound(kind, id).src);
     if (token !== this.previewToken) return;
     const now = ctx.currentTime;
     const gain = ctx.createGain();
@@ -168,30 +168,6 @@ export class FocusAudio {
     this.listeners.clear();
     void this.ctx?.close();
     this.ctx = null;
-  }
-
-  private fetchEncoded(src: string): Promise<ArrayBuffer> {
-    let p = this.encoded.get(src);
-    if (!p) {
-      p = fetch(src).then((r) => {
-        if (!r.ok) throw new Error(`Could not load sound ${src}`);
-        return r.arrayBuffer();
-      });
-      this.encoded.set(src, p);
-      p.catch(() => this.encoded.delete(src));
-    }
-    return p;
-  }
-
-  private load(src: string): Promise<AudioBuffer> {
-    let p = this.decoded.get(src);
-    if (!p) {
-      // decodeAudioData detaches its input, so decode a copy of the cached bytes.
-      p = this.fetchEncoded(src).then((bytes) => this.unlock().decodeAudioData(bytes.slice(0)));
-      this.decoded.set(src, p);
-      p.catch(() => this.decoded.delete(src));
-    }
-    return p;
   }
 
   private emit(): void {

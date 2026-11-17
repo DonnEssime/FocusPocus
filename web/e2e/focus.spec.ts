@@ -16,7 +16,7 @@ test('bundled sounds decode in the browser with their exact lengths', async ({ p
     const ids = ['clock-tick', 'rainforest-rain', 'bell-single', 'bell-triple', 'chime-soft'];
     const out: Record<string, number> = {};
     for (const id of ids) {
-      const bytes = await (await fetch(`/FocusPocus/src/modules/focus/sounds/${id}.ogg`)).arrayBuffer();
+      const bytes = await (await fetch(`/FocusPocus/src/sounds/${id}.ogg`)).arrayBuffer();
       out[id] = (await new OfflineAudioContext(1, 1, 48_000).decodeAudioData(bytes)).duration;
     }
     return out;

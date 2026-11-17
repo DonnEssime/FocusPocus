@@ -46,11 +46,11 @@ describe('versions', () => {
   });
 });
 
-describe('focus sounds', () => {
-  const SOUND_DIR = join(WEB_SRC, 'modules', 'focus', 'sounds');
+describe('bundled sounds', () => {
+  const SOUND_DIR = join(WEB_SRC, 'sounds');
 
   it('ships a file and a licence row for every registered sound, within the size budget', async () => {
-    const { SOUNDS, DEFAULT_SOUND_IDS, resolveSound } = await import('../web/src/modules/focus/sounds');
+    const { SOUNDS, DEFAULT_SOUND_IDS, resolveSound } = await import('../web/src/sounds/registry');
     const licences = readFileSync(join(SOUND_DIR, 'LICENSES.md'), 'utf8');
     let total = 0;
     for (const sound of SOUNDS) {
