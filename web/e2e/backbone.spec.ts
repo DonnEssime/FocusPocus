@@ -8,7 +8,7 @@ function vaultUrl(name: string): string {
 /** Focus has no history panel: undo/redo there is keyboard-only. Click a panel title first so
  * no input has focus (inputs keep their native text undo). */
 async function shortcut(page: Page, panelTitle: string, keys: string): Promise<void> {
-  await page.locator('.panel-title', { hasText: panelTitle }).click();
+  await page.locator('.panel-title').getByText(panelTitle, { exact: true }).click();
   await page.keyboard.press(keys);
 }
 
@@ -42,13 +42,18 @@ test('shows the modules as tabs with their panels', async ({ page }) => {
 
   await page.getByRole('tab', { name: 'Focus' }).click();
   await expect(page.getByTestId('focus-countdown')).toHaveText('25:00');
-  // Focus has no undo/redo buttons; time tracking and to-dos each have their own.
+  // Focus has no undo/redo buttons; time tracking, to-dos and timers each have their own.
   await expect(page.locator('[data-panel$=".history"]').filter({ visible: true })).toHaveCount(0);
-  await expect(page.locator('[data-panel$=".history"]')).toHaveCount(2);
+  await expect(page.locator('[data-panel$=".history"]')).toHaveCount(3);
 
   await page.getByRole('tab', { name: 'To-dos' }).click();
   await expect(page.getByTestId('todo-panel')).toBeVisible();
   await expect(page.locator('[data-panel="todo.history"]')).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Timers' }).click();
+  await expect(page.getByTestId('timers-panel')).toBeVisible();
+  await expect(page.locator('[data-panel="timers.quick"]')).toBeVisible();
+  await expect(page.locator('[data-panel="timers.history"]')).toBeVisible();
 });
 
 test('settings close with Esc, and keyboard undo waits until they are closed', async ({ page }) => {

@@ -1,0 +1,162 @@
+/* Timers (§10.4). Colours come from theme tokens only. */
+.timers {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-width: 48rem;
+}
+
+.timer-add {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.timer-add-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.timer-when-input {
+  flex: 2 1 12rem;
+  min-width: 0;
+}
+
+.timer-when-input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.timer-label-input {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.timer-sound {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.timer-preview {
+  margin: 0;
+  min-height: 1.3em;
+}
+
+.timer-list,
+.quick-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.timer-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.6rem 0.65rem;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.timer-row.finished {
+  border-color: var(--accent);
+}
+
+.timer-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.timer-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.timer-countdown {
+  font-size: 1.6rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+button.timer-cancel {
+  border-color: transparent;
+  background: none;
+  color: var(--text-muted);
+}
+
+/* Elapsed share of the timer, along the bottom edge. */
+.timer-progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: calc(var(--progress) * 100%);
+  background: var(--accent);
+}
+
+.timer-row.finished .timer-progress {
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .timer-row.finished {
+    animation: timer-finished 1.6s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes timer-finished {
+  to {
+    background: var(--surface-sunken);
+  }
+}
+
+.quick-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.quick-start {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  text-align: left;
+}
+
+.quick-length {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.quick-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Remove buttons show on hover or keyboard focus, as in the to-do list. */
+button.quick-delete {
+  border-color: transparent;
+  background: none;
+  color: var(--text-muted);
+  opacity: 0;
+}
+
+.quick-row:hover button.quick-delete,
+.quick-row:focus-within button.quick-delete {
+  opacity: 1;
+}

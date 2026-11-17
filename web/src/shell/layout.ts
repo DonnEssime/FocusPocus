@@ -79,6 +79,29 @@ export const DEFAULT_LAYOUT: LayoutNode = {
         ],
       },
     },
+    {
+      // Running timers (with the new-timer form) on the left; quick timers and undo/redo beside (§10.4).
+      title: 'timers.title',
+      node: {
+        kind: 'split',
+        direction: 'row',
+        children: [
+          { node: panel('timers.list'), weight: 2 },
+          {
+            node: {
+              kind: 'split',
+              direction: 'column',
+              scroll: true,
+              children: [
+                { node: panel('timers.quick'), fit: true },
+                { node: panel('timers.history'), fit: true },
+              ],
+            },
+            weight: 1,
+          },
+        ],
+      },
+    },
   ],
 };
 

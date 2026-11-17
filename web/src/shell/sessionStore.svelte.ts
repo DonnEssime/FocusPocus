@@ -17,6 +17,11 @@ export class SessionStore {
     });
   }
 
+  /** Identifies the open vault (stable across windows and computers), e.g. for Web Lock names. */
+  get vaultId(): string {
+    return this.vs.vault.manifest.vaultId;
+  }
+
   moduleState<S>(moduleId: string): S {
     void this.version;
     return this.vs.session.getState<S>(moduleId);
