@@ -11,13 +11,15 @@ import { focusModule } from './modules/focus';
 import { focusCatalog } from './modules/focus/catalog';
 import { timetrackModule } from './modules/timetrack';
 import { timetrackCatalog } from './modules/timetrack/catalog';
+import { timersModule } from './modules/timers';
+import { timersCatalog } from './modules/timers/catalog';
 import { todoModule } from './modules/todo';
 import { todoCatalog } from './modules/todo/catalog';
 
-export const MODULES: readonly ModuleDefinition<any>[] = [appModule, timetrackModule, focusModule, todoModule];
+export const MODULES: readonly ModuleDefinition<any>[] = [appModule, timetrackModule, focusModule, todoModule, timersModule];
 
 /** Separate parts, so a test can verify that no key is defined twice. */
-export const CATALOG_PARTS: readonly MessageCatalog[] = [coreCatalog, shellCatalog, appCatalog, timetrackCatalog, focusCatalog, todoCatalog];
+export const CATALOG_PARTS: readonly MessageCatalog[] = [coreCatalog, shellCatalog, appCatalog, timetrackCatalog, focusCatalog, todoCatalog, timersCatalog];
 
 export const catalog = {
   ...coreCatalog,
@@ -26,6 +28,7 @@ export const catalog = {
   ...timetrackCatalog,
   ...focusCatalog,
   ...todoCatalog,
+  ...timersCatalog,
 } as const satisfies MessageCatalog;
 
 export type AppMessageKey = keyof typeof catalog;
