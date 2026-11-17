@@ -32,6 +32,7 @@ npm run dev          # http://localhost:5173/FocusPocus/
 | `timetrack` | Calendar-style time tracking (day/week/month), tagged blocks, simple statistics. See §10.2. |
 | `focus` | Simple focus timer: one countdown with a background sound and a finishing sound. See §10.1. |
 | `todo` | Hierarchical to-do list: a pure tree of items with plain-text notes. See §10.3. |
+| `timers` | Kitchen-style timers: any number running at once, set by length or clock time, plus a quick list of common lengths. See §10.4. |
 | `app` (core) | Settings shared by everything: language, theme, layout, module config. |
 
 Modules are **independent**. They do not read each other's state or issue each other's commands. Today each one is shown as a tab. The shell must not assume this, because later we may show modules side by side or in a layout the user arranges (see §6).
@@ -66,12 +67,14 @@ src/
     timetrack/            commands, state, catalog
     focus/                same shape
     todo/                 same shape
+    timers/               same shape, plus parse.ts (reading "5m" / "1:00 am")
   registry.ts             composition root: the only file that lists every module and catalog
 web/
   src/
     shell/                vault picker and opening, Shell, LayoutHost, StatusBar, session store, contexts
     storage/              File System Access backend, IndexedDB vault pointer
     theme/                tokens, registry, themes/ (the only place colours may appear)
+    sounds/               bundled sounds, their registry and loader (shared by focus and timers)
     i18n/                 <Msg>, msgText(), current locale
     modules/<id>/         Svelte panels per module (import only their own domain module)
   e2e/                    Playwright specs
@@ -352,7 +355,7 @@ The module provides two panels (§6), shown together on the Focus page: `split(h
 
 #### Sounds
 
-The sounds are a fixed set that ships with the app, kept in a registry the same way as themes (§7.1). Adding a sound means adding one file and one registry entry:
+The sounds are a fixed set that ships with the app, kept in a registry the same way as themes (§7.1). The registry (`web/src/sounds/`) is shared: the timers (§10.4) use the finishing sounds as alarms. Adding a sound means adding one file and one registry entry:
 
 ```ts
 interface SoundDefinition {
@@ -368,7 +371,7 @@ interface SoundDefinition {
 | `ticking` (looped) | `clock-tick` (default), `rainforest-rain` |
 | `finishing` (once) | a few bell chimes, e.g. `bell-single` (default), `bell-triple`, `chime-soft` |
 
-- **Assets** live in `web/src/modules/focus/sounds/` as mono Ogg/Opus, about 220 KB for the whole set; a test keeps it under 400 KB. Ticking sounds must loop without an audible seam.
+- **Assets** live in `web/src/sounds/` as mono Ogg/Opus, about 220 KB for the whole set; a test keeps it under 400 KB. Ticking sounds must loop without an audible seam.
 - **Generated, not recorded:** the current files are synthesized by `scripts/generate-sounds.mjs`. The script is deterministic and needs `ffmpeg` with libopus to run. Loops are built to be periodic: tick events sit inside the loop, and noise layers are cross-faded circularly. The output is original work, released under CC0.
 - **Replacing a sound with a recording:** keep the same id and file name.
 - **Licensing:** use only CC0 or similarly unrestricted recordings. Record each file's source and licence in `sounds/LICENSES.md`; a test checks that every sound has a row there.
@@ -402,7 +405,7 @@ interface SoundDefinition {
   - If the window playing the sounds closes or reloads, the session keeps running silently and still ends on time.
   - A Stop from any window or computer silences the window that is playing, because the audio engine follows the state.
   - When a session ends naturally, the finishing sound is never cut off, even if a new session starts right away.
-- **Engine:** there is one `FocusAudio` per open vault (`web/src/modules/focus/audio.ts`). It fetches the selected sounds ahead of time and decodes them on first use. The ticking loop fades in and out over 50 ms, so there are no clicks.
+- **Engine:** there is one `FocusAudio` per open vault (`web/src/modules/focus/audio.ts`). It fetches the selected sounds ahead of time and decodes them on first use (through the shared `SoundLoader`). The ticking loop fades in and out over 50 ms, so there are no clicks.
 - **Concurrent starts:** if a Start meets a session that is still running (for example two computers both started), the newer Start wins and the older session counts as stopped at the newer Start's `at`. This follows the rejected-on-merge rules in §4.5.
 
 ### 10.2 `timetrack`: time tracker
@@ -679,6 +682,55 @@ Commands that target an item removed by another writer (for example a sub-task a
 
 `{ items: Record<id, TodoItem>, roots: id[] }`, where a `TodoItem` is `{ id, parentId, title, notes, done, collapsed, children: id[] }`. Both directions of the parent link are stored, so rendering never searches. A command copies the item map once, which is fine for the hundreds to low thousands of items a to-do list holds. The payloads are not frozen by a fixture vault yet; do that before the first change to a `todo.*` payload.
 
+### 10.4 `timers`: timers and alarms
+
+Any number of timers run at once. Each rings **once** when it reaches zero and then stays in the list, marked finished, until it is dismissed. Not in scope: pausing, repeating alarms, snoozing, editing a running timer.
+
+#### Panels
+
+The **Timers** tab: `split(h, [timers.list ×2, split(v, scroll, [timers.quick, timers.history], all fit) ×1])`. The list has no panel header (`showTitle: false`).
+
+- **`timers.list`:** the new-timer form on top, then every timer, the one that rings first on top.
+  - **Form:** a field for the length or time, an optional **name**, the **alarm sound** (a dropdown of the finishing sounds; choosing one plays a preview and is saved as `timers.SetSettings`), **Start** (or Enter), and **Save to quick timers**. Below it, a live preview ("Rings in 1h 30m, at 11:32" / "Rings at tomorrow 01:00, in 15h"), or why the text can't be read.
+  - **A running timer** shows its name, "rings 13:45" (with "tomorrow" or the date when not today), a large countdown (`05:03`, `1:05:03`, `2d 03:05:03`), a thin progress line, and ✕ to cancel.
+  - **A finished timer** shows "Finished 13:45", pulses gently, and has a **Dismiss** button.
+- **`timers.quick`:** the user's own list of common lengths, empty at first, sorted by length then name. Clicking one starts a timer with its length, name and sound; ✕ (on hover or focus) removes it. **Save to quick timers** in the form adds the typed length with the form's name and sound; it is offered only for lengths that are not on the list yet (same length and name).
+- **`timers.history`:** undo/redo.
+
+#### What the field accepts (`parse.ts`)
+
+| Shape | Examples | Rule |
+| --- | --- | --- |
+| Length | `5m`, `90s`, `1h`, `1h30`, `1h00`, `1h 30m`, `2h15m30s`, `1.5h`, `1,5 h`, `2d`, `25` | units from large to small; a bare number is minutes; a bare number after a unit is the next smaller unit (`1h30`, `5m30`) |
+| Clock time | `13:30`, `1:00 am`, `7am`, `7 p.m.` | needs a colon or am/pm (`13h30` is a length); the next such moment, today or else tomorrow |
+| Clock time + date | `7am tomorrow`, `today 18:00`, `13:30 20/11`, `20.11.2026 1:00 am`, `2026-12-24 18:00` | date before or after the time, **day first**; a past day-month without a year means next year; a past date with a year is refused |
+
+Timers last from 1 s to 366 days. The parser runs in the UI with the local time zone; the command stores only absolute instants.
+
+#### Which window rings
+
+- Every window and computer that has the vault open shows the timers, but **only one window per browser rings**: the holder of the Web Lock `focuspocus:timer-alarms:<vaultId>`. When it closes or reloads, the next window in line takes over. Other computers with the vault open ring too, each in one of its windows.
+- Only windows that may play audio (the user has clicked or typed in them) compete for the lock, so the alarm never falls to a window that would stay silent. A window that can't play audio yet says "Click anywhere in this window to allow alarm sounds" while timers run.
+- A timer rings only if its end is reached **while the window watches it**. One that ended before the window opened, or that comes back through undo after it ended, is shown as finished, silently.
+- **Timing:** about 90 s before the end, the leader schedules the sound on the Web Audio clock, which stays exact in background tabs. A wall-clock watchdog (re-checked at least every 30 s) backs it up for a computer that slept through the end: it then rings as soon as it wakes. The engine is `TimerAlarms` (`web/src/modules/timers/alarms.ts`), one per open vault; the tab stays mounted while hidden, so it rings from any tab.
+
+#### Commands
+
+| Command | Payload | Undoable | Notes |
+| --- | --- | --- | --- |
+| `timers.Start` | `{ label, startedAt, endsAt, soundId }` | yes | the timer id is this command's id; wall-clock times, as for `focus.Start`; from a quick timer, its values are copied in and there are **no `deps`** on it |
+| `timers.Remove` | `{ timerId }` | yes | cancels or dismisses; `deps: [timerId]`; a timer already gone is a no-op (two windows dismissing) |
+| `timers.AddPreset` | `{ durationMs, label, soundId }` | yes | the preset id is this command's id; duplicates are prevented by the UI, not by `apply` (two computers may add the same one) |
+| `timers.DeletePreset` | `{ presetId }` | yes | `deps: [presetId]` |
+| `timers.SetSettings` | `{ soundId? }` | yes | the sound of timers started from the form (default `bell-triple`) |
+
+- **Finishing writes nothing:** a timer whose `endsAt` has passed is finished.
+- **Undo** of a Start removes the timer; undo of a Remove brings it back (finished timers come back silent, see above).
+
+#### State
+
+`{ timers: Record<id, Timer>, presets: TimerPreset[], soundId }`, where a `Timer` is `{ id, label, startedAt, endsAt, soundId }` and a `TimerPreset` is `{ id, durationMs, label, soundId }`. The payloads are not frozen by a fixture vault yet; do that before the first change to a `timers.*` payload.
+
 ---
 
 ## 11. Roadmap / TODO
@@ -711,4 +763,6 @@ Commands that target an item removed by another writer (for example a sub-task a
 - [x] `todo` module (§10.3): tree domain and commands, list panel with inline adding, notes pop-up, collapse, finish, subtree delete
 - [x] `todo`: new items on top, reordering siblings (drag, Alt+↑/↓), undo/redo reveals hidden items
 - [ ] `todo`: frozen fixture vault for the `todo.*` payloads
+- [x] `timers` module (§10.4): timers by length or clock time, ring once per browser (Web Locks), dismiss, quick list with per-entry sound; sounds moved to a shared `web/src/sounds/`
+- [ ] `timers`: frozen fixture vault for the `timers.*` payloads
 - Later: theme and language selection (`app.SetTheme`, `app.SetLanguage`), user-arranged layouts
