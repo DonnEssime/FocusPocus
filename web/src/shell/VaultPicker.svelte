@@ -11,6 +11,7 @@
     isFsAccessSupported,
     openVault,
     pickFolder,
+    trace,
     requestPermission,
     type OpenedVault,
     type OpenResult,
@@ -47,7 +48,9 @@
       phase = 'unsupported';
       return;
     }
+    trace('loading stored vault handle');
     stored = await loadVaultHandle();
+    trace(`stored handle: ${stored ? `"${stored.name}"` : 'none'}`);
     if (stored && autoOpen && (await hasPermission(stored))) {
       if (await finish(openVault(stored, { remember: true, onStep }))) return;
     }

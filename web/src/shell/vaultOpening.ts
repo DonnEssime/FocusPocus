@@ -15,8 +15,10 @@ export type OpenResult = { ok: true; opened: OpenedVault } | { ok: false; error:
 
 export type OpenStep = 'permission' | 'inspecting' | 'creating' | 'loading';
 
-function trace(message: string, ...rest: unknown[]): void {
-  console.info(`[FocusPocus] ${message}`, ...rest);
+const t0 = performance.now();
+
+export function trace(message: string, ...rest: unknown[]): void {
+  console.info(`[FocusPocus +${Math.round(performance.now() - t0)}ms] ${message}`, ...rest);
 }
 
 export function isFsAccessSupported(): boolean {
