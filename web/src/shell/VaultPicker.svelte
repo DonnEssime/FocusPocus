@@ -24,8 +24,11 @@
   let stored = $state<FileSystemDirectoryHandle | null>(null);
   let error = $state<{ key: AppMessageKey; params?: MessageParams } | null>(null);
   let busy = $state(false);
-  let step = $state<OpenStep | 'picking' | null>(null);
-  const STEP_KEYS: Record<OpenStep | 'picking', AppMessageKey> = {
+  let step = $state<OpenStep | 'picking' | 'stored' | 'storedPermission' | null>(null);
+  const build = __BUILD_INFO__;
+  const STEP_KEYS: Record<NonNullable<typeof step>, AppMessageKey> = {
+    stored: 'shell.picker.step.stored',
+    storedPermission: 'shell.picker.step.storedPermission',
     picking: 'shell.picker.step.picking',
     permission: 'shell.picker.step.permission',
     inspecting: 'shell.picker.step.inspecting',
@@ -49,11 +52,16 @@
       return;
     }
     trace('loading stored vault handle');
+    step = 'stored';
     stored = await loadVaultHandle();
     trace(`stored handle: ${stored ? `"${stored.name}"` : 'none'}`);
-    if (stored && autoOpen && (await hasPermission(stored))) {
-      if (await finish(openVault(stored, { remember: true, onStep }))) return;
+    if (stored && autoOpen) {
+      step = 'storedPermission';
+      const granted = await hasPermission(stored);
+      trace(`stored handle permission: ${granted ? 'granted' : 'not granted'}`);
+      if (granted && (await finish(openVault(stored, { remember: true, onStep })))) return;
     }
+    step = null;
     phase = stored ? 'reopen' : 'choose';
   });
 
@@ -124,6 +132,11 @@
     {/if}
     {#if step}
       <p class="muted" role="status" data-testid="picker-step"><Msg key={STEP_KEYS[step]} /></p>
+    {/if}
+    {#if phase === 'loading'}
+      <p class="muted small" data-testid="picker-build">
+        <Msg key="shell.picker.build" params={{ commit: build.commit, date: build.date }} />
+      </p>
     {/if}
     {#if error}
       <p class="error" role="alert"><Msg key={error.key} params={error.params} /></p>

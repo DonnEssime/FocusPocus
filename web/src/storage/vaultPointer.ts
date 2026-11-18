@@ -28,11 +28,26 @@ async function run<T>(mode: IDBTransactionMode, fn: (store: IDBObjectStore) => I
   }
 }
 
+/** How long to wait for the browser's IndexedDB before giving up on the remembered folder. */
+const LOAD_TIMEOUT_MS = 3_000;
+
+/** Null when nothing is stored, IndexedDB fails, or it doesn't answer in time (seen after a Chrome update). */
 export async function loadVaultHandle(): Promise<FileSystemDirectoryHandle | null> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    timer = setTimeout(() => {
+      console.warn(`[FocusPocus] IndexedDB did not answer within ${LOAD_TIMEOUT_MS} ms; skipping the remembered vault`);
+      resolve(null);
+    }, LOAD_TIMEOUT_MS);
+  });
+  const load = run('readonly', (s) => s.get(KEY)).then(
+    (v) => (v as FileSystemDirectoryHandle | undefined) ?? null,
+    () => null,
+  );
   try {
-    return ((await run('readonly', (s) => s.get(KEY))) as FileSystemDirectoryHandle | undefined) ?? null;
-  } catch {
-    return null;
+    return await Promise.race([load, timeout]);
+  } finally {
+    clearTimeout(timer);
   }
 }
 
